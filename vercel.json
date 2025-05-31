@@ -6,38 +6,6 @@
             "dest": "/images/$1"
         },
         {
-            "src": "/health",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/auth/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/menu/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/reservations/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/events/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/patisserie/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/deliveries/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
-            "src": "/verification/(.*)",
-            "dest": "/api/index.js"
-        },
-        {
             "src": "/(.*)",
             "dest": "/api/index.js"
         }
