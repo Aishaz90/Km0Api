@@ -6,12 +6,10 @@ let connectionPromise = null;
 
 const connectDB = async () => {
     if (isConnected) {
-        console.log('Using existing database connection');
         return;
     }
 
     if (connectionPromise) {
-        console.log('Connection already in progress, waiting...');
         return connectionPromise;
     }
 
@@ -24,6 +22,11 @@ const connectDB = async () => {
                 useUnifiedTopology: true,
                 serverSelectionTimeoutMS: 5000,
                 socketTimeoutMS: 45000,
+                connectTimeoutMS: 5000,
+                maxPoolSize: 10,
+                minPoolSize: 5,
+                maxIdleTimeMS: 10000,
+                waitQueueTimeoutMS: 5000
             };
 
             await mongoose.connect(uri, options);
