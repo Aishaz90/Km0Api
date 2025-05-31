@@ -1,42 +1,32 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const serverless = require('serverless-http'); // 👈 Add this
 const { connectDB, isConnected } = require('../db');
 
 // Create Express app
 const app = express();
 
-// Basic middleware
+// Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Debug middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     next();
 });
 
-// Serve static files
 app.use('/images', express.static(path.join(__dirname, '../images')));
 
-// Root route
+// Root and health check routes
 app.get('/', (req, res) => {
-    res.status(200).json({
-        message: 'Welcome to KM0 API',
-        status: 'operational',
-        version: '1.0.0'
-    });
+    res.status(200).json({ message: 'Welcome to KM0 API', status: 'operational', version: '1.0.0' });
 });
-
-// Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        timestamp: new Date().toISOString()
-    });
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Database connection middleware
+// DB connection middleware
 app.use(async (req, res, next) => {
     try {
         if (!isConnected()) {
@@ -46,19 +36,12 @@ app.use(async (req, res, next) => {
         }
         next();
     } catch (error) {
-        console.error('Database connection error:', {
-            message: error.message,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-        });
-        res.status(500).json({
-            message: 'Database connection error',
-            error: error.message
-        });
+        console.error('Database connection error:', error);
+        res.status(500).json({ message: 'Database connection error', error: error.message });
     }
 });
 
-// Load routes
+// Routes
 const routes = [
     { path: '/auth', file: '../Route/auth.routes' },
     { path: '/menu', file: '../Route/menu.routes' },
@@ -79,7 +62,7 @@ routes.forEach(route => {
     }
 });
 
-// Error handling middleware
+// Error and 404 handlers
 app.use((err, req, res, next) => {
     console.error('Error details:', {
         name: err.name,
@@ -91,45 +74,28 @@ app.use((err, req, res, next) => {
     });
 
     if (err.name === 'MulterError') {
-        return res.status(400).json({
-            message: 'File upload error',
-            error: err.message
-        });
+        return res.status(400).json({ message: 'File upload error', error: err.message });
     }
 
     if (err.name === 'ValidationError') {
-        return res.status(400).json({
-            message: 'Validation Error',
-            error: err.message
-        });
+        return res.status(400).json({ message: 'Validation Error', error: err.message });
     }
 
     if (err.name === 'JsonWebTokenError') {
-        return res.status(401).json({
-            message: 'Invalid token',
-            error: err.message
-        });
+        return res.status(401).json({ message: 'Invalid token', error: err.message });
     }
 
-    res.status(500).json({
-        message: 'Something went wrong!',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
-// Handle 404
 app.use((req, res) => {
     if (req.path === '/favicon.ico') {
         res.status(204).end();
         return;
     }
-    res.status(404).json({
-        message: 'Not Found',
-        path: req.path,
-        method: req.method,
-        timestamp: new Date().toISOString()
-    });
+    res.status(404).json({ message: 'Not Found', path: req.path, method: req.method, timestamp: new Date().toISOString() });
 });
 
-// Export the Express app as a serverless function
-module.exports = app; 
+// ✅ This is required for Vercel serverless function
+module.exports = app;
+module.exports.handler = serverless(app);
