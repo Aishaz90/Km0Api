@@ -59,23 +59,25 @@ app.use(async (req, res, next) => {
 });
 
 // Load routes
+const routes = [
+    { path: '/auth', file: '../Route/auth.routes' },
+    { path: '/menu', file: '../Route/menu.routes' },
+    { path: '/reservations', file: '../Route/reservation.routes' },
+    { path: '/events', file: '../Route/event.routes' },
+    { path: '/patisserie', file: '../Route/patisserie.routes' },
+    { path: '/deliveries', file: '../Route/delivery.routes' },
+    { path: '/verification', file: '../Route/verification.routes' }
+];
+
 console.log('Loading routes...');
-try {
-    app.use('/auth', require('../Route/auth.routes'));
-    app.use('/menu', require('../Route/menu.routes'));
-    app.use('/reservations', require('../Route/reservation.routes'));
-    app.use('/events', require('../Route/event.routes'));
-    app.use('/patisserie', require('../Route/patisserie.routes'));
-    app.use('/deliveries', require('../Route/delivery.routes'));
-    app.use('/verification', require('../Route/verification.routes'));
-    console.log('Routes loaded successfully');
-} catch (error) {
-    console.error('Error loading routes:', {
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-    });
-}
+routes.forEach(route => {
+    try {
+        app.use(route.path, require(route.file));
+        console.log(`✔ Loaded ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err.message);
+    }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
