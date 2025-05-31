@@ -3,11 +3,18 @@ const cors = require('cors');
 const path = require('path');
 const { connectDB, isConnected } = require('../db');
 
+// Create Express app
 const app = express();
 
-// Middleware
+// Basic middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
+
+// Debug middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+});
 
 // Serve static files
 app.use('/images', express.static(path.join(__dirname, '../images')));
@@ -23,18 +30,27 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Database connection middleware
 app.use(async (req, res, next) => {
     try {
         if (!isConnected()) {
+            console.log('Connecting to database...');
             await connectDB();
+            console.log('Database connected successfully');
         }
         next();
     } catch (error) {
-        console.error('Database connection error:', error);
+        console.error('Database connection error:', {
+            message: error.message,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+        });
         res.status(500).json({
             message: 'Database connection error',
             error: error.message
@@ -42,20 +58,24 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Debug middleware to log all requests
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`);
-    next();
-});
-
-// Routes
-app.use('/auth', require('../Route/auth.routes'));
-app.use('/menu', require('../Route/menu.routes'));
-app.use('/reservations', require('../Route/reservation.routes'));
-app.use('/events', require('../Route/event.routes'));
-app.use('/patisserie', require('../Route/patisserie.routes'));
-app.use('/deliveries', require('../Route/delivery.routes'));
-app.use('/verification', require('../Route/verification.routes'));
+// Load routes
+console.log('Loading routes...');
+try {
+    app.use('/auth', require('../Route/auth.routes'));
+    app.use('/menu', require('../Route/menu.routes'));
+    app.use('/reservations', require('../Route/reservation.routes'));
+    app.use('/events', require('../Route/event.routes'));
+    app.use('/patisserie', require('../Route/patisserie.routes'));
+    app.use('/deliveries', require('../Route/delivery.routes'));
+    app.use('/verification', require('../Route/verification.routes'));
+    console.log('Routes loaded successfully');
+} catch (error) {
+    console.error('Error loading routes:', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+    });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -64,7 +84,8 @@ app.use((err, req, res, next) => {
         message: err.message,
         stack: err.stack,
         path: req.path,
-        method: req.method
+        method: req.method,
+        timestamp: new Date().toISOString()
     });
 
     if (err.name === 'MulterError') {
@@ -74,7 +95,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Handle specific error types
     if (err.name === 'ValidationError') {
         return res.status(400).json({
             message: 'Validation Error',
@@ -97,7 +117,6 @@ app.use((err, req, res, next) => {
 
 // Handle 404
 app.use((req, res) => {
-    // Don't send 404 for favicon.ico
     if (req.path === '/favicon.ico') {
         res.status(204).end();
         return;
@@ -105,7 +124,8 @@ app.use((req, res) => {
     res.status(404).json({
         message: 'Not Found',
         path: req.path,
-        method: req.method
+        method: req.method,
+        timestamp: new Date().toISOString()
     });
 });
 
