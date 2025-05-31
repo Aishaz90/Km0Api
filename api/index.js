@@ -43,7 +43,17 @@ app.use(async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Database connection error:', error);
-        res.status(500).json({ message: 'Database connection error', error: error.message });
+        // Don't send error response for favicon.ico
+        if (req.path === '/favicon.ico') {
+            res.status(204).end();
+            return;
+        }
+        res.status(500).json({
+            message: 'Database connection error',
+            error: error.message,
+            path: req.path,
+            method: req.method
+        });
     }
 });
 
@@ -96,6 +106,12 @@ app.use((err, req, res, next) => {
         timestamp: new Date().toISOString()
     });
 
+    // Don't send error response for favicon.ico
+    if (req.path === '/favicon.ico') {
+        res.status(204).end();
+        return;
+    }
+
     if (err.name === 'MulterError') {
         return res.status(400).json({ message: 'File upload error', error: err.message });
     }
@@ -108,7 +124,12 @@ app.use((err, req, res, next) => {
         return res.status(401).json({ message: 'Invalid token', error: err.message });
     }
 
-    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    res.status(500).json({
+        message: 'Something went wrong!',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+        path: req.path,
+        method: req.method
+    });
 });
 
 app.use((req, res) => {
