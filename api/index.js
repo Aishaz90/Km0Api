@@ -12,6 +12,15 @@ app.use(express.json());
 // Serve static files
 app.use('/images', express.static(path.join(__dirname, '../images')));
 
+// Root route
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: 'Welcome to KM0 API',
+        status: 'operational',
+        version: '1.0.0'
+    });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
@@ -51,12 +60,29 @@ app.use((err, req, res, next) => {
     console.error('Error details:', {
         name: err.name,
         message: err.message,
-        stack: err.stack
+        stack: err.stack,
+        path: req.path,
+        method: req.method
     });
 
     if (err.name === 'MulterError') {
         return res.status(400).json({
             message: 'File upload error',
+            error: err.message
+        });
+    }
+
+    // Handle specific error types
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({
+            message: 'Validation Error',
+            error: err.message
+        });
+    }
+
+    if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+            message: 'Invalid token',
             error: err.message
         });
     }
@@ -69,7 +95,16 @@ app.use((err, req, res, next) => {
 
 // Handle 404
 app.use((req, res) => {
-    res.status(404).json({ message: 'Not Found' });
+    // Don't send 404 for favicon.ico
+    if (req.path === '/favicon.ico') {
+        res.status(204).end();
+        return;
+    }
+    res.status(404).json({
+        message: 'Not Found',
+        path: req.path,
+        method: req.method
+    });
 });
 
 // Export the Express app as a serverless function
