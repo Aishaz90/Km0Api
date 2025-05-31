@@ -29,21 +29,13 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// DB connection middleware
-app.use(async (req, res, next) => {
-    try {
-        if (!isConnected()) {
-            console.log('Connecting to database...');
-            await connectDB();
-            console.log('Database connected successfully');
-        }
-        next();
-    } catch (error) {
-        console.error('Database connection error:', error);
-        res.status(500).json({ message: 'Database connection error', error: error.message });
-    }
-});
-
+connectDB()
+  .then(() => {
+    console.log('Initial DB connection established');
+  })
+  .catch((error) => {
+    console.error('Initial DB connection failed:', error);
+  });
 // Routes
 const routes = [
     { path: '/auth', file: '../Route/auth.routes' },
