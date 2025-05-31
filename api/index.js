@@ -99,6 +99,4 @@ app.use((req, res) => {
     res.status(404).json({ message: 'Not Found', path: req.path, method: req.method, timestamp: new Date().toISOString() });
 });
 
-// Export the Express app as a serverless function
-module.exports = app;
-module.exports.handler = serverless(app);
+module.exports = serverless(app);
