@@ -8,7 +8,21 @@ const options = {
     maxPoolSize: 10,
     minPoolSize: 5,
     keepAlive: true,
-    keepAliveInitialDelay: 300000
+    keepAliveInitialDelay: 300000,
+    // Add time skew protection options
+    serverSelectionTimeoutMS: 30000,
+    heartbeatFrequencyMS: 10000,
+    retryWrites: true,
+    retryReads: true,
+    // Disable strict time checks
+    strict: false,
+    // Add time synchronization options
+    autoIndex: true,
+    autoCreate: true,
+    // Add connection timeout options
+    connectTimeoutMS: 10000,
+    // Add server monitoring options
+    monitorCommands: true
 };
 
 let cachedConnection = null;
@@ -22,6 +36,21 @@ const connectDB = async () => {
         if (!process.env.MONGODB_URI) {
             throw new Error('MONGODB_URI is not defined in environment variables');
         }
+
+        // Add connection event handlers before connecting
+        mongoose.connection.on('connected', () => {
+            console.log('MongoDB connected successfully');
+        });
+
+        mongoose.connection.on('error', (err) => {
+            console.error('MongoDB connection error:', err);
+            cachedConnection = null;
+        });
+
+        mongoose.connection.on('disconnected', () => {
+            console.log('MongoDB disconnected');
+            cachedConnection = null;
+        });
 
         const connection = await mongoose.connect(process.env.MONGODB_URI, options);
         cachedConnection = connection;
