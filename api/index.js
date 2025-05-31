@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const serverless = require('serverless-http'); // 👈 Add this
+const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 
 // Create Express app
@@ -11,17 +11,20 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
+// Debug middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     next();
 });
 
+// Serve static files
 app.use('/images', express.static(path.join(__dirname, '../images')));
 
 // Root and health check routes
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'Welcome to KM0 API', status: 'operational', version: '1.0.0' });
 });
+
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -96,6 +99,6 @@ app.use((req, res) => {
     res.status(404).json({ message: 'Not Found', path: req.path, method: req.method, timestamp: new Date().toISOString() });
 });
 
-// ✅ This is required for Vercel serverless function
+// Export the Express app as a serverless function
 module.exports = app;
 module.exports.handler = serverless(app);
