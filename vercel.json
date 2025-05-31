@@ -8,6 +8,10 @@
     ],
     "routes": [
         {
+            "src": "/health",
+            "dest": "/api/index.js"
+        },
+        {
             "src": "/images/(.*)",
             "dest": "/images/$1"
         },
@@ -15,5 +19,8 @@
             "src": "/(.*)",
             "dest": "/api/index.js"
         }
-    ]
+    ],
+    "env": {
+        "NODE_ENV": "production"
+    }
 }
