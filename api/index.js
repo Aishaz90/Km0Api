@@ -46,13 +46,13 @@ app.use(async (req, res, next) => {
 
 // Routes
 const routes = [
-    { path: '/auth', file: '../Route/auth.routes' },
-    { path: '/menu', file: '../Route/menu.routes' },
-    { path: '/reservations', file: '../Route/reservation.routes' },
-    { path: '/events', file: '../Route/event.routes' },
-    { path: '/patisserie', file: '../Route/patisserie.routes' },
-    { path: '/deliveries', file: '../Route/delivery.routes' },
-    { path: '/verification', file: '../Route/verification.routes' }
+    { path: '/api/auth', file: '../Route/auth.routes' },
+    { path: '/api/menu', file: '../Route/menu.routes' },
+    { path: '/api/reservations', file: '../Route/reservation.routes' },
+    { path: '/api/events', file: '../Route/event.routes' },
+    { path: '/api/patisserie', file: '../Route/patisserie.routes' },
+    { path: '/api/deliveries', file: '../Route/delivery.routes' },
+    { path: '/api/verification', file: '../Route/verification.routes' }
 ];
 
 console.log('Loading routes...');
@@ -96,7 +96,13 @@ app.use((req, res) => {
         res.status(204).end();
         return;
     }
-    res.status(404).json({ message: 'Not Found', path: req.path, method: req.method, timestamp: new Date().toISOString() });
+    res.status(404).json({
+        message: 'Not Found',
+        path: req.path,
+        method: req.method,
+        timestamp: new Date().toISOString(),
+        availableRoutes: routes.map(r => r.path)
+    });
 });
 
 // Export the Express app as a serverless function
