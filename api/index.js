@@ -14,6 +14,9 @@ app.use(express.json());
 // Debug middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    console.log('Request headers:', req.headers);
+    console.log('Request query:', req.query);
+    console.log('Request body:', req.body);
     next();
 });
 
@@ -58,7 +61,8 @@ const routes = [
 console.log('Loading routes...');
 routes.forEach(route => {
     try {
-        app.use(route.path, require(route.file));
+        const router = require(route.file);
+        app.use(route.path, router);
         console.log(`✔ Loaded ${route.path}`);
     } catch (err) {
         console.error(`❌ Failed to load ${route.path}:`, err.message);
