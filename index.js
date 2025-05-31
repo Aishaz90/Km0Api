@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
 // Routes
 app.use('/auth', require('./Route/auth.routes'));
@@ -24,7 +24,12 @@ app.use('/verification', require('./Route/verification.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    console.error('Error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+    });
+
     if (err.name === 'MulterError') {
         return res.status(400).json({
             message: 'File upload error',
@@ -39,25 +44,50 @@ let isConnected = false;
 
 const connectToDatabase = async () => {
     if (isConnected) {
+        console.log('Using existing database connection');
         return;
     }
     try {
+        console.log('Attempting to connect to database...');
         await connectDB();
         isConnected = true;
         console.log('Database connected successfully');
     } catch (error) {
-        console.error('Database connection error:', error);
+        console.error('Database connection error:', {
+            message: error.message,
+            stack: error.stack
+        });
         throw error;
     }
 };
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        database: isConnected ? 'connected' : 'disconnected',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Export the Express app for serverless deployment
 module.exports = async (req, res) => {
     try {
+        console.log('Incoming request:', {
+            method: req.method,
+            path: req.path,
+            timestamp: new Date().toISOString()
+        });
+
         await connectToDatabase();
         return app(req, res);
     } catch (error) {
-        console.error('Serverless function error:', error);
+        console.error('Serverless function error:', {
+            message: error.message,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+        });
+
         return res.status(500).json({
             message: 'Internal Server Error',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
