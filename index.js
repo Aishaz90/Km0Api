@@ -14,13 +14,13 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
-app.use('/api/auth', require('./Route/auth.routes'));
-app.use('/api/menu', require('./Route/menu.routes'));
-app.use('/api/reservations', require('./Route/reservation.routes'));
-app.use('/api/events', require('./Route/event.routes'));
-app.use('/api/patisserie', require('./Route/patisserie.routes'));
-app.use('/api/deliveries', require('./Route/delivery.routes'));
-app.use('/api/verification', require('./Route/verification.routes'));
+app.use('/auth', require('./Route/auth.routes'));
+app.use('/menu', require('./Route/menu.routes'));
+app.use('/reservations', require('./Route/reservation.routes'));
+app.use('/events', require('./Route/event.routes'));
+app.use('/patisserie', require('./Route/patisserie.routes'));
+app.use('/deliveries', require('./Route/delivery.routes'));
+app.use('/verification', require('./Route/verification.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
