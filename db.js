@@ -13,10 +13,12 @@ const connectWithRetry = async () => {
         const uri = 'mongodb+srv://elmardizarrouk:aicha021004@km0api.yxnuywq.mongodb.net/Km0Api?retryWrites=true&w=majority';
         await mongoose.connect(uri, options);
         console.log('MongoDB connected successfully');
+        return true;
     } catch (error) {
         console.error('MongoDB connection error:', error);
         console.log('Retrying connection in 5 seconds...');
         setTimeout(connectWithRetry, 5000);
+        return false;
     }
 };
 
@@ -38,4 +40,7 @@ mongoose.connection.on('disconnected', () => {
 // Initial connection
 connectWithRetry();
 
-module.exports = connectWithRetry;
+module.exports = {
+    connectDB: connectWithRetry,
+    isConnected: () => mongoose.connection.readyState === 1
+};
