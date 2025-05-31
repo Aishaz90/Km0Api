@@ -29,24 +29,18 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// DB connection middleware with timeout
+// DB connection middleware
 app.use(async (req, res, next) => {
     try {
         if (!isConnected()) {
-            const connectionPromise = connectDB();
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Database connection timeout')), 5000);
-            });
-
-            await Promise.race([connectionPromise, timeoutPromise]);
+            console.log('Connecting to database...');
+            await connectDB();
+            console.log('Database connected successfully');
         }
         next();
     } catch (error) {
         console.error('Database connection error:', error);
-        res.status(500).json({
-            message: 'Database connection error',
-            error: error.message
-        });
+        res.status(500).json({ message: 'Database connection error', error: error.message });
     }
 });
 
@@ -105,5 +99,6 @@ app.use((req, res) => {
     res.status(404).json({ message: 'Not Found', path: req.path, method: req.method, timestamp: new Date().toISOString() });
 });
 
-// Export the serverless function
-module.exports = serverless(app);
+// Export the Express app as a serverless function
+module.exports = app;
+module.exports.handler = serverless(app);
