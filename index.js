@@ -5,12 +5,10 @@ const path = require('path');
 const connectDB = require('./db');
 
 const app = express();
-const port = 5000;
 
 // Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
 // Routes
@@ -39,17 +37,15 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Start server
-const startServer = async () => {
+// Connect DB before export
+(async () => {
     try {
         await connectDB();
-        app.listen(port, () => {
-            console.log(`Serveur démarré sur le port ${port}`);
-        });
+        console.log('MongoDB connected');
     } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
+        console.error('MongoDB connection failed:', error);
     }
-};
+})();
 
-startServer();
+// ✅ Export the app instead of listening
+module.exports = app;
