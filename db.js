@@ -21,15 +21,25 @@ const connectDB = async () => {
             useUnifiedTopology: true,
             bufferCommands: false,
             maxPoolSize: 10,
+            minPoolSize: 5,
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
-            family: 4
+            connectTimeoutMS: 10000,
+            family: 4,
+            keepAlive: true,
+            keepAliveInitialDelay: 300000
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-            console.log('MongoDB connected successfully');
-            return mongoose;
-        });
+        cached.promise = mongoose.connect(MONGODB_URI, opts)
+            .then((mongoose) => {
+                console.log('MongoDB connected successfully');
+                return mongoose;
+            })
+            .catch((err) => {
+                console.error('MongoDB connection error:', err);
+                cached.promise = null;
+                throw err;
+            });
     }
 
     try {
@@ -57,6 +67,18 @@ mongoose.connection.on('disconnected', () => {
     console.log('MongoDB disconnected');
     cached.conn = null;
     cached.promise = null;
+});
+
+// Handle process termination
+process.on('SIGINT', async () => {
+    try {
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed through app termination');
+        process.exit(0);
+    } catch (err) {
+        console.error('Error during MongoDB connection closure:', err);
+        process.exit(1);
+    }
 });
 
 module.exports = {

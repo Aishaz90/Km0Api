@@ -29,11 +29,16 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// DB connection middleware
+// DB connection middleware with timeout
 app.use(async (req, res, next) => {
     try {
         if (!isConnected()) {
-            await connectDB();
+            const connectionPromise = connectDB();
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Database connection timeout')), 5000);
+            });
+
+            await Promise.race([connectionPromise, timeoutPromise]);
         }
         next();
     } catch (error) {
