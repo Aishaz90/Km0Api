@@ -34,19 +34,33 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!' });
 });
 
-const PORT = process.env.PORT || 5000;
+// Initialize database connection
+let isConnected = false;
 
-// Start server only after database connection is established
-const startServer = async () => {
+const connectToDatabase = async () => {
+    if (isConnected) {
+        return;
+    }
     try {
         await connectDB();
-        app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
+        isConnected = true;
+        console.log('Database connected successfully');
     } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
+        console.error('Database connection error:', error);
+        throw error;
     }
 };
 
-startServer();
+// Export the Express app for serverless deployment
+module.exports = async (req, res) => {
+    try {
+        await connectToDatabase();
+        return app(req, res);
+    } catch (error) {
+        console.error('Serverless function error:', error);
+        return res.status(500).json({
+            message: 'Internal Server Error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
