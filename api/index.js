@@ -42,18 +42,20 @@ app.use(async (req, res, next) => {
     }
 });
 
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+});
+
 // Routes
-try {
-    app.use('/auth', require('../Route/auth.routes'));
-    app.use('/menu', require('../Route/menu.routes'));
-    app.use('/reservations', require('../Route/reservation.routes'));
-    app.use('/events', require('../Route/event.routes'));
-    app.use('/patisserie', require('../Route/patisserie.routes'));
-    app.use('/deliveries', require('../Route/delivery.routes'));
-    app.use('/verification', require('../Route/verification.routes'));
-} catch (error) {
-    console.error('Route loading error:', error);
-}
+app.use('/auth', require('../Route/auth.routes'));
+app.use('/menu', require('../Route/menu.routes'));
+app.use('/reservations', require('../Route/reservation.routes'));
+app.use('/events', require('../Route/event.routes'));
+app.use('/patisserie', require('../Route/patisserie.routes'));
+app.use('/deliveries', require('../Route/delivery.routes'));
+app.use('/verification', require('../Route/verification.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
