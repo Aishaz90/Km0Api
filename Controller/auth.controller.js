@@ -10,19 +10,20 @@ const generateTokens = (userId) => {
 
         console.log('Generating tokens for userId:', userId);
 
-        // Generate access token (8 hours)
+       // Generate access token (8 hours)
         const accessToken = jwt.sign(
             { id: userId.toString() },
             process.env.JWT_SECRET,
             { expiresIn: '8h' }
         );
-
+        
         // Generate refresh token (7 days)
         const refreshToken = jwt.sign(
             { id: userId.toString() },
-            process.env.JWT_SECRET,
+            process.env.JWT_REFRESH_SECRET,
             { expiresIn: '7d' }
         );
+  
 
         return { accessToken, refreshToken };
     } catch (error) {
