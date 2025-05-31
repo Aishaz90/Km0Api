@@ -47,27 +47,43 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Routes
-const routes = [
-    { path: '/auth', file: '../Route/auth.routes' },
-    { path: '/menu', file: '../Route/menu.routes' },
-    { path: '/reservations', file: '../Route/reservation.routes' },
-    { path: '/events', file: '../Route/event.routes' },
-    { path: '/patisserie', file: '../Route/patisserie.routes' },
-    { path: '/deliveries', file: '../Route/delivery.routes' },
-    { path: '/verification', file: '../Route/verification.routes' }
-];
-
+// Direct route loading
 console.log('Loading routes...');
-routes.forEach(route => {
-    try {
-        const router = require(route.file);
-        app.use(route.path, router);
-        console.log(`✔ Loaded ${route.path}`);
-    } catch (err) {
-        console.error(`❌ Failed to load ${route.path}:`, err.message);
-    }
-});
+
+// Auth routes
+const authRouter = require('../Route/auth.routes');
+app.use('/auth', authRouter);
+console.log('✔ Loaded /auth');
+
+// Menu routes
+const menuRouter = require('../Route/menu.routes');
+app.use('/menu', menuRouter);
+console.log('✔ Loaded /menu');
+
+// Reservation routes
+const reservationRouter = require('../Route/reservation.routes');
+app.use('/reservations', reservationRouter);
+console.log('✔ Loaded /reservations');
+
+// Event routes
+const eventRouter = require('../Route/event.routes');
+app.use('/events', eventRouter);
+console.log('✔ Loaded /events');
+
+// Patisserie routes
+const patisserieRouter = require('../Route/patisserie.routes');
+app.use('/patisserie', patisserieRouter);
+console.log('✔ Loaded /patisserie');
+
+// Delivery routes
+const deliveryRouter = require('../Route/delivery.routes');
+app.use('/deliveries', deliveryRouter);
+console.log('✔ Loaded /deliveries');
+
+// Verification routes
+const verificationRouter = require('../Route/verification.routes');
+app.use('/verification', verificationRouter);
+console.log('✔ Loaded /verification');
 
 // Error and 404 handlers
 app.use((err, req, res, next) => {
@@ -105,7 +121,7 @@ app.use((req, res) => {
         path: req.path,
         method: req.method,
         timestamp: new Date().toISOString(),
-        availableRoutes: routes.map(r => r.path)
+        availableRoutes: ['/auth', '/menu', '/reservations', '/events', '/patisserie', '/deliveries', '/verification']
     });
 });
 
