@@ -1,24 +1,56 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const connectWithRetry = async () => {
-    const options = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-    };
+const MONGODB_URI = 'mongodb+srv://elmardizarrouk:aicha021004@km0api.yxnuywq.mongodb.net/Km0Api?retryWrites=true&w=majority';
 
+// Cache the database connection
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
+const connectDB = async () => {
     try {
-        const uri = 'mongodb+srv://elmardizarrouk:aicha021004@km0api.yxnuywq.mongodb.net/Km0Api?retryWrites=true&w=majority';
-        await mongoose.connect(uri, options);
-        console.log('MongoDB connected successfully');
-        return true;
+        if (cached.conn) {
+            console.log('Using cached database connection');
+            return cached.conn;
+        }
+
+        if (!cached.promise) {
+            const opts = {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+                bufferCommands: false,
+                maxPoolSize: 10,
+                minPoolSize: 5,
+                serverSelectionTimeoutMS: 5000,
+                socketTimeoutMS: 45000,
+                connectTimeoutMS: 10000,
+                family: 4,
+                keepAlive: true,
+                keepAliveInitialDelay: 300000
+            };
+
+            console.log('Connecting to MongoDB...');
+            cached.promise = mongoose.connect(MONGODB_URI, opts)
+                .then((mongoose) => {
+                    console.log('MongoDB connected successfully');
+                    return mongoose;
+                })
+                .catch((err) => {
+                    console.error('MongoDB connection error:', err);
+                    cached.promise = null;
+                    throw err;
+                });
+        }
+
+        cached.conn = await cached.promise;
+        return cached.conn;
     } catch (error) {
-        console.error('MongoDB connection error:', error);
-        console.log('Retrying connection in 5 seconds...');
-        setTimeout(connectWithRetry, 5000);
-        return false;
+        console.error('Error in connectDB:', error);
+        cached.promise = null;
+        throw error;
     }
 };
 
@@ -29,18 +61,33 @@ mongoose.connection.on('connected', () => {
 
 mongoose.connection.on('error', (err) => {
     console.error('MongoDB connection error:', err);
+    cached.conn = null;
+    cached.promise = null;
 });
 
 mongoose.connection.on('disconnected', () => {
     console.log('MongoDB disconnected');
-    console.log('Attempting to reconnect...');
-    connectWithRetry();
+    cached.conn = null;
+    cached.promise = null;
 });
 
-// Initial connection
-connectWithRetry();
+// Handle process termination
+process.on('SIGINT', async () => {
+    try {
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed through app termination');
+        process.exit(0);
+    } catch (err) {
+        console.error('Error during MongoDB connection closure:', err);
+        process.exit(1);
+    }
+});
 
 module.exports = {
-    connectDB: connectWithRetry,
-    isConnected: () => mongoose.connection.readyState === 1
+    connectDB,
+    isConnected: () => {
+        const state = mongoose.connection.readyState;
+        console.log('MongoDB connection state:', state);
+        return state === 1;
+    }
 };
