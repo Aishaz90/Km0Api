@@ -4,15 +4,16 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
+const { auth, isAdmin } = require('../Middleware/auth.middleware');
+const upload = require('../Middleware/upload.middleware');
 
-// Import routes directly
-const authRouter = require('../Route/auth.routes.js');
-const menuRouter = require('../Route/menu.routes.js');
-const reservationRouter = require('../Route/reservation.routes.js');
-const eventRouter = require('../Route/event.routes.js');
-const patisserieRouter = require('../Route/patisserie.routes.js');
-const deliveryRouter = require('../Route/delivery.routes.js');
-const verificationRouter = require('../Route/verification.routes.js');
+// Import models
+const Menu = require('../Model/menu.model');
+const User = require('../Model/user.model');
+const Reservation = require('../Model/reservation.model');
+const Event = require('../Model/event.model');
+const Patisserie = require('../Model/patisserie.model');
+const Delivery = require('../Model/delivery.model');
 
 // Create Express app
 const app = express();
@@ -58,31 +59,167 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Mount routes directly
-console.log('Mounting routes...');
-app.use('/auth', authRouter);
-app.use('/menu', menuRouter);
-app.use('/reservations', reservationRouter);
-app.use('/events', eventRouter);
-app.use('/patisserie', patisserieRouter);
-app.use('/deliveries', deliveryRouter);
-app.use('/verification', verificationRouter);
-console.log('All routes mounted successfully');
-
-// Add a test route to verify routing is working
-app.get('/test-route', (req, res) => {
-    res.json({ message: 'Test route is working' });
+// Auth Routes
+app.post('/auth/register', async (req, res) => {
+    try {
+        const user = new User(req.body);
+        await user.save();
+        const token = await user.generateAuthToken();
+        res.status(201).json({ user, token });
+    } catch (error) {
+        res.status(400).json({ message: 'Error registering user', error: error.message });
+    }
 });
 
-// Add a test menu route directly
-app.get('/test-menu', async (req, res) => {
+app.post('/auth/login', async (req, res) => {
     try {
-        const Menu = require('../Model/menu.model');
-        const menuItems = await Menu.find({});
+        const user = await User.findByCredentials(req.body.email, req.body.password);
+        const token = await user.generateAuthToken();
+        res.json({ user, token });
+    } catch (error) {
+        res.status(401).json({ message: 'Invalid login credentials', error: error.message });
+    }
+});
+
+// Menu Routes
+app.get('/menu', async (req, res) => {
+    try {
+        const { category, isAvailable } = req.query;
+        const query = {};
+        if (category) query.category = category;
+        if (isAvailable !== undefined) query.isAvailable = isAvailable === 'true';
+        const menuItems = await Menu.find(query);
         res.json(menuItems);
     } catch (error) {
-        console.error('Error in test-menu route:', error);
         res.status(500).json({ message: 'Error fetching menu items', error: error.message });
+    }
+});
+
+app.get('/menu/:id', async (req, res) => {
+    try {
+        const menuItem = await Menu.findById(req.params.id);
+        if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
+        res.json(menuItem);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching menu item', error: error.message });
+    }
+});
+
+app.post('/menu', auth, isAdmin, upload.single('image'), async (req, res) => {
+    try {
+        const menuItem = new Menu(req.body);
+        await menuItem.save();
+        res.status(201).json(menuItem);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating menu item', error: error.message });
+    }
+});
+
+app.patch('/menu/:id', auth, isAdmin, upload.single('image'), async (req, res) => {
+    try {
+        const menuItem = await Menu.findById(req.params.id);
+        if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
+        Object.assign(menuItem, req.body);
+        await menuItem.save();
+        res.json(menuItem);
+    } catch (error) {
+        res.status(400).json({ message: 'Error updating menu item', error: error.message });
+    }
+});
+
+app.delete('/menu/:id', auth, isAdmin, async (req, res) => {
+    try {
+        const menuItem = await Menu.findByIdAndDelete(req.params.id);
+        if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
+        res.json({ message: 'Menu item deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting menu item', error: error.message });
+    }
+});
+
+// Reservation Routes
+app.get('/reservations', auth, async (req, res) => {
+    try {
+        const reservations = await Reservation.find({ user: req.user._id });
+        res.json(reservations);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching reservations', error: error.message });
+    }
+});
+
+app.post('/reservations', auth, async (req, res) => {
+    try {
+        const reservation = new Reservation({
+            ...req.body,
+            user: req.user._id
+        });
+        await reservation.save();
+        res.status(201).json(reservation);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating reservation', error: error.message });
+    }
+});
+
+// Event Routes
+app.get('/events', async (req, res) => {
+    try {
+        const events = await Event.find();
+        res.json(events);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching events', error: error.message });
+    }
+});
+
+app.post('/events', auth, isAdmin, async (req, res) => {
+    try {
+        const event = new Event(req.body);
+        await event.save();
+        res.status(201).json(event);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating event', error: error.message });
+    }
+});
+
+// Patisserie Routes
+app.get('/patisserie', async (req, res) => {
+    try {
+        const items = await Patisserie.find();
+        res.json(items);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching patisserie items', error: error.message });
+    }
+});
+
+app.post('/patisserie', auth, isAdmin, upload.single('image'), async (req, res) => {
+    try {
+        const item = new Patisserie(req.body);
+        await item.save();
+        res.status(201).json(item);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating patisserie item', error: error.message });
+    }
+});
+
+// Delivery Routes
+app.get('/deliveries', auth, async (req, res) => {
+    try {
+        const deliveries = await Delivery.find({ user: req.user._id });
+        res.json(deliveries);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching deliveries', error: error.message });
+    }
+});
+
+app.post('/deliveries', auth, async (req, res) => {
+    try {
+        const delivery = new Delivery({
+            ...req.body,
+            user: req.user._id
+        });
+        await delivery.save();
+        res.status(201).json(delivery);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating delivery', error: error.message });
     }
 });
 
@@ -117,17 +254,11 @@ app.use((req, res) => {
         res.status(204).end();
         return;
     }
-    console.log('404 Not Found:', {
-        path: req.path,
-        method: req.method,
-        availableRoutes: routes.map(r => r.path)
-    });
     res.status(404).json({
         message: 'Not Found',
         path: req.path,
         method: req.method,
-        timestamp: new Date().toISOString(),
-        availableRoutes: routes.map(r => r.path)
+        timestamp: new Date().toISOString()
     });
 });
 
