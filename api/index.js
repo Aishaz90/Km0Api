@@ -5,12 +5,14 @@ const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
 
+// Create Express app
 const app = express();
 
-// Middlewares
+// Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
+// Debug middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     console.log('Request headers:', req.headers);
@@ -23,50 +25,60 @@ app.use((req, res, next) => {
 // Serve static files
 app.use('/images', express.static(path.join(__dirname, '../images')));
 
-// Health check
+// Root and health check routes
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'Welcome to KM0 API', status: 'operational', version: '1.0.0' });
 });
+
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// DB middleware
+// DB connection middleware
 app.use(async (req, res, next) => {
     try {
         if (!isConnected()) {
             console.log('Connecting to database...');
             await connectDB();
-            console.log('Database connected');
+            console.log('Database connected successfully');
         }
         next();
     } catch (error) {
-        console.error('DB error:', error);
+        console.error('Database connection error:', error);
         res.status(500).json({ message: 'Database connection error', error: error.message });
     }
 });
 
-// Routes under /api
-const apiRouter = express.Router();
+const routes = [
+    { path: '/auth', file: path.join(__dirname, '../Route/auth.routes') },
+    { path: '/menu', file: path.join(__dirname, '../Route/menu.routes') },
+    { path: '/reservations', file: path.join(__dirname, '../Route/reservation.routes') },
+    { path: '/events', file: path.join(__dirname, '../Route/event.routes') },
+    { path: '/patisserie', file: path.join(__dirname, '../Route/patisserie.routes') },
+    { path: '/deliveries', file: path.join(__dirname, '../Route/delivery.routes') },
+    { path: '/verification', file: path.join(__dirname, '../Route/verification.routes') }
+];
 
-apiRouter.use('/auth', require('../Route/auth.routes'));
-apiRouter.use('/menu', require('../Route/menu.routes'));
-apiRouter.use('/reservations', require('../Route/reservation.routes'));
-apiRouter.use('/events', require('../Route/event.routes'));
-apiRouter.use('/patisserie', require('../Route/patisserie.routes'));
-apiRouter.use('/deliveries', require('../Route/delivery.routes'));
-apiRouter.use('/verification', require('../Route/verification.routes'));
+console.log('Loading routes...');
+routes.forEach(route => {
+    try {
+        const router = require(route.file);
+        app.use(route.path, router);
+        console.log(`✔ Loaded ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err.message);
+    }
+});
 
-app.use('/api', apiRouter);
-
-// Error handler
+// Error and 404 handlers
 app.use((err, req, res, next) => {
-    console.error('❌ Error:', {
+    console.error('Error details:', {
         name: err.name,
         message: err.message,
+        stack: err.stack,
         path: req.path,
         method: req.method,
-        stack: err.stack
+        timestamp: new Date().toISOString()
     });
 
     if (err.name === 'MulterError') {
@@ -84,35 +96,47 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
-// 404 handler
 app.use((req, res) => {
     if (req.path === '/favicon.ico') {
-        return res.status(204).end();
+        res.status(204).end();
+        return;
     }
     console.log('404 Not Found:', {
         path: req.path,
-        method: req.method
+        method: req.method,
+        availableRoutes: routes.map(r => r.path)
     });
     res.status(404).json({
         message: 'Not Found',
         path: req.path,
         method: req.method,
         timestamp: new Date().toISOString(),
-        availableRoutes: [
-            '/auth', '/menu', '/reservations', '/events', '/patisserie', '/deliveries', '/verification'
-        ]
+        availableRoutes: routes.map(r => r.path)
     });
 });
 
-// Only run local server in development
-if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, async () => {
+// Initialize database connection before starting server
+const startServer = async () => {
+    try {
+        console.log('Initializing database connection...');
         await connectDB();
-        console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-}
+        console.log('Database connection initialized successfully');
 
-// Export for Vercel serverless
+        // Start server only if not in serverless environment
+        if (process.env.NODE_ENV !== 'production') {
+            const PORT = process.env.PORT || 3000;
+            app.listen(PORT, () => {
+                console.log(`Server is running on port ${PORT}`);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
+
+// Export the Express app as a serverless function
 module.exports = app;
 module.exports.handler = serverless(app);
