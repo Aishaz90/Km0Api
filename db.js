@@ -1,53 +1,32 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Cache the database connection
-let cached = global.mongoose;
-
-if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
-}
+const MONGODB_URI = 'mongodb+srv://elmardizarrouk:aicha021004@km0api.yxnuywq.mongodb.net/Km0Api?retryWrites=true&w=majority';
 
 const connectDB = async () => {
     try {
-        if (cached.conn) {
-            console.log('Using cached database connection');
+        if (mongoose.connection.readyState === 1) {
+            console.log('Already connected to MongoDB');
             return true;
         }
 
-        if (!cached.promise) {
-            const options = {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-                bufferCommands: false,
-                maxPoolSize: 10,
-                minPoolSize: 5,
-                serverSelectionTimeoutMS: 5000,
-                socketTimeoutMS: 45000,
-                connectTimeoutMS: 10000,
-                family: 4,
-                keepAlive: true,
-                keepAliveInitialDelay: 300000
-            };
+        console.log('Connecting to MongoDB...');
+        await mongoose.connect(MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+            connectTimeoutMS: 10000,
+            maxPoolSize: 10,
+            minPoolSize: 5,
+            keepAlive: true,
+            keepAliveInitialDelay: 300000
+        });
 
-            console.log('Creating new database connection...');
-            cached.promise = mongoose.connect('mongodb+srv://elmardizarrouk:aicha021004@km0api.yxnuywq.mongodb.net/Km0Api?retryWrites=true&w=majority', options)
-                .then((mongoose) => {
-                    console.log('MongoDB connected successfully');
-                    return mongoose;
-                })
-                .catch((err) => {
-                    console.error('MongoDB connection error:', err);
-                    cached.promise = null;
-                    throw err;
-                });
-        }
-
-        cached.conn = await cached.promise;
+        console.log('MongoDB connected successfully');
         return true;
     } catch (error) {
-        console.error('Error in connectDB:', error);
-        cached.promise = null;
+        console.error('MongoDB connection error:', error);
         return false;
     }
 };
@@ -59,20 +38,16 @@ mongoose.connection.on('connected', () => {
 
 mongoose.connection.on('error', (err) => {
     console.error('MongoDB connection error event:', err);
-    cached.conn = null;
-    cached.promise = null;
 });
 
 mongoose.connection.on('disconnected', () => {
     console.log('MongoDB disconnected event fired');
-    cached.conn = null;
-    cached.promise = null;
 });
 
 const isConnected = () => {
     const state = mongoose.connection.readyState;
     console.log('Current MongoDB connection state:', state);
-    return state === 1 || cached.conn !== null;
+    return state === 1;
 };
 
 module.exports = {
