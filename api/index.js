@@ -275,6 +275,32 @@ const initializeApp = async () => {
         console.log('Initializing database connection...');
         await connectDB();
         console.log('Database connection initialized successfully');
+
+        // Start local server if not in production
+        if (process.env.NODE_ENV !== 'production') {
+            const PORT = process.env.PORT || 3000;
+            app.listen(PORT, () => {
+                console.log(`🚀 Server is running on http://localhost:${PORT}`);
+                console.log('Available routes:');
+                console.log('GET  /');
+                console.log('GET  /health');
+                console.log('POST /auth/register');
+                console.log('POST /auth/login');
+                console.log('GET  /menu');
+                console.log('GET  /menu/:id');
+                console.log('POST /menu');
+                console.log('PATCH /menu/:id');
+                console.log('DELETE /menu/:id');
+                console.log('GET  /reservations');
+                console.log('POST /reservations');
+                console.log('GET  /events');
+                console.log('POST /events');
+                console.log('GET  /patisserie');
+                console.log('POST /patisserie');
+                console.log('GET  /deliveries');
+                console.log('POST /deliveries');
+            });
+        }
     } catch (error) {
         console.error('Failed to initialize app:', error);
         process.exit(1);
