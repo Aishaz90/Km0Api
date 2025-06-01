@@ -510,8 +510,15 @@ const startServer = async () => {
     }
 };
 
-startServer();
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    startServer();
+}
 
 // Export the Express app as a serverless function
-module.exports = app;
-module.exports.handler = serverless(app);
+const handler = serverless(app, {
+    basePath: '/api',
+    callbackWaitsForEmptyEventLoop: false
+});
+
+module.exports = { handler };
