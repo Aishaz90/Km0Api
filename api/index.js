@@ -47,17 +47,16 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Routes
-const routes = [
-    { path: '/auth', file: '../Route/auth.routes' },
-    { path: '/menu', file: '../Route/menu.routes' },
-    { path: '/reservations', file: '../Route/reservation.routes' },
-    { path: '/events', file: '../Route/event.routes' },
-    { path: '/patisserie', file: '../Route/patisserie.routes' },
-    { path: '/deliveries', file: '../Route/delivery.routes' },
-    { path: '/verification', file: '../Route/verification.routes' }
-];
 
+const routes = [
+    { path: '/auth', file: path.join(__dirname, '../Route/auth.routes') },
+    { path: '/menu', file: path.join(__dirname, '../Route/menu.routes') },
+    { path: '/reservations', file: path.join(__dirname, '../Route/reservation.routes') },
+    { path: '/events', file: path.join(__dirname, '../Route/event.routes') },
+    { path: '/patisserie', file: path.join(__dirname, '../Route/patisserie.routes') },
+    { path: '/deliveries', file: path.join(__dirname, '../Route/delivery.routes') },
+    { path: '/verification', file: path.join(__dirname, '../Route/verification.routes') }
+];
 console.log('Loading routes...');
 routes.forEach(route => {
     try {
