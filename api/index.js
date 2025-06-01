@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
+const mongoose = require('mongoose');
 
 // Create Express app
 const app = express();
@@ -17,6 +18,7 @@ app.use((req, res, next) => {
     console.log('Request headers:', req.headers);
     console.log('Request query:', req.query);
     console.log('Request body:', req.body);
+    console.log('MongoDB connection state:', mongoose.connection.readyState);
     next();
 });
 
@@ -99,6 +101,11 @@ app.use((req, res) => {
         res.status(204).end();
         return;
     }
+    console.log('404 Not Found:', {
+        path: req.path,
+        method: req.method,
+        availableRoutes: routes.map(r => r.path)
+    });
     res.status(404).json({
         message: 'Not Found',
         path: req.path,
@@ -107,6 +114,28 @@ app.use((req, res) => {
         availableRoutes: routes.map(r => r.path)
     });
 });
+
+// Initialize database connection before starting server
+const startServer = async () => {
+    try {
+        console.log('Initializing database connection...');
+        await connectDB();
+        console.log('Database connection initialized successfully');
+
+        // Start server only if not in serverless environment
+        if (process.env.NODE_ENV !== 'production') {
+            const PORT = process.env.PORT || 3000;
+            app.listen(PORT, () => {
+                console.log(`Server is running on port ${PORT}`);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
 
 // Export the Express app as a serverless function
 module.exports = app;
