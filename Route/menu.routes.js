@@ -5,7 +5,7 @@ const { auth, isAdmin } = require('../Middleware/auth.middleware');
 const upload = require('../Middleware/upload.middleware');
 
 // Public routes
-router.get('/liste', getAllMenuItems);
+router.get('/', getAllMenuItems);
 router.get('/:id', getMenuItemById);
 
 // Protected routes (admin only)
