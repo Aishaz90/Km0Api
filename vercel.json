@@ -1,16 +1,17 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "api/index.js",
-        "use": "@vercel/node"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "api/index.js"
-      }
-    ]
-  }
-  
+  "version": 2,
+  "builds": [
+    { "src": "api/index.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/menu", "dest": "api/index.js" },
+    { "src": "/auth", "dest": "api/index.js" },
+    { "src": "/reservations", "dest": "api/index.js" },
+    { "src": "/events", "dest": "api/index.js" },
+    { "src": "/patisserie", "dest": "api/index.js" },
+    { "src": "/deliveries", "dest": "api/index.js" },
+    { "src": "/verification", "dest": "api/index.js" },
+    { "src": "/health", "dest": "api/index.js" },
+    { "src": "/", "dest": "api/index.js" }
+  ]
+}
