@@ -4,16 +4,6 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
-const { auth, isAdmin } = require('../Middleware/auth.middleware');
-const upload = require('../Middleware/upload.middleware');
-
-// Import models
-const Menu = require('../Model/menu.model');
-const User = require('../Model/user.model');
-const Reservation = require('../Model/reservation.model');
-const Event = require('../Model/event.model');
-const Patisserie = require('../Model/patisserie.model');
-const Delivery = require('../Model/delivery.model');
 
 // Create Express app
 const app = express();
@@ -36,34 +26,12 @@ app.use((req, res, next) => {
 app.use('/images', express.static(path.join(__dirname, '../images')));
 
 // Root and health check routes
-app.get('/', async (req, res) => {
-    try {
-        res.status(200).json({
-            message: 'Welcome to KM0 API',
-            status: 'operational',
-            version: '1.0.0',
-            environment: process.env.NODE_ENV,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Root route error:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
+app.get('/', (req, res) => {
+    res.status(200).json({ message: 'Welcome to KM0 API', status: 'operational', version: '1.0.0' });
 });
 
-app.get('/health', async (req, res) => {
-    try {
-        const dbStatus = isConnected() ? 'connected' : 'disconnected';
-        res.status(200).json({
-            status: 'ok',
-            timestamp: new Date().toISOString(),
-            database: dbStatus,
-            environment: process.env.NODE_ENV
-        });
-    } catch (error) {
-        console.error('Health check error:', error);
-        res.status(500).json({ message: 'Health check failed', error: error.message });
-    }
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // DB connection middleware
@@ -77,182 +45,55 @@ app.use(async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Database connection error:', error);
-        res.status(500).json({
-            message: 'Database connection error',
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        res.status(500).json({ message: 'Database connection error', error: error.message });
+    }
+});
+
+const routes = [
+    { path: '/auth', file: '../Route/auth.routes.js' },
+    { path: '/menu', file: '../Route/menu.routes.js' },
+    { path: '/reservations', file: '../Route/reservation.routes.js' },
+    { path: '/events', file: '../Route/event.routes.js' },
+    { path: '/patisserie', file: '../Route/patisserie.routes.js' },
+    { path: '/deliveries', file: '../Route/delivery.routes.js' },
+    { path: '/verification', file: '../Route/verification.routes.js' }
+];
+
+console.log('Loading routes...');
+routes.forEach(route => {
+    try {
+        console.log(`Attempting to load route from: ${route.file}`);
+        const router = require(route.file);
+        console.log(`Router loaded successfully for ${route.path}`);
+
+        // Add debug middleware to the router
+        router.use((req, res, next) => {
+            console.log(`[${route.path}] ${req.method} ${req.path}`);
+            next();
         });
+
+        app.use(route.path, router);
+        console.log(`✔ Successfully mounted ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err);
+        console.error('Error stack:', err.stack);
     }
 });
 
-// Auth Routes
-app.post('/auth/register', async (req, res) => {
-    try {
-        const user = new User(req.body);
-        await user.save();
-        const token = await user.generateAuthToken();
-        res.status(201).json({ user, token });
-    } catch (error) {
-        console.error('Register error:', error);
-        res.status(400).json({ message: 'Error registering user', error: error.message });
-    }
+// Add a test route to verify routing is working
+app.get('/test-route', (req, res) => {
+    res.json({ message: 'Test route is working' });
 });
 
-app.post('/auth/login', async (req, res) => {
+// Add a test menu route directly
+app.get('/test-menu', async (req, res) => {
     try {
-        const user = await User.findByCredentials(req.body.email, req.body.password);
-        const token = await user.generateAuthToken();
-        res.json({ user, token });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(401).json({ message: 'Invalid login credentials', error: error.message });
-    }
-});
-
-// Menu Routes
-app.get('/menu', async (req, res) => {
-    try {
-        const { category, isAvailable } = req.query;
-        const query = {};
-        if (category) query.category = category;
-        if (isAvailable !== undefined) query.isAvailable = isAvailable === 'true';
-        const menuItems = await Menu.find(query);
+        const Menu = require('../Model/menu.model');
+        const menuItems = await Menu.find({});
         res.json(menuItems);
     } catch (error) {
-        console.error('Menu fetch error:', error);
+        console.error('Error in test-menu route:', error);
         res.status(500).json({ message: 'Error fetching menu items', error: error.message });
-    }
-});
-
-app.get('/menu/:id', async (req, res) => {
-    try {
-        const menuItem = await Menu.findById(req.params.id);
-        if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
-        res.json(menuItem);
-    } catch (error) {
-        console.error('Menu item fetch error:', error);
-        res.status(500).json({ message: 'Error fetching menu item', error: error.message });
-    }
-});
-
-app.post('/menu', auth, isAdmin, upload.single('image'), async (req, res) => {
-    try {
-        const menuItem = new Menu(req.body);
-        await menuItem.save();
-        res.status(201).json(menuItem);
-    } catch (error) {
-        console.error('Menu creation error:', error);
-        res.status(400).json({ message: 'Error creating menu item', error: error.message });
-    }
-});
-
-app.patch('/menu/:id', auth, isAdmin, upload.single('image'), async (req, res) => {
-    try {
-        const menuItem = await Menu.findById(req.params.id);
-        if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
-        Object.assign(menuItem, req.body);
-        await menuItem.save();
-        res.json(menuItem);
-    } catch (error) {
-        console.error('Menu update error:', error);
-        res.status(400).json({ message: 'Error updating menu item', error: error.message });
-    }
-});
-
-app.delete('/menu/:id', auth, isAdmin, async (req, res) => {
-    try {
-        const menuItem = await Menu.findByIdAndDelete(req.params.id);
-        if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
-        res.json({ message: 'Menu item deleted successfully' });
-    } catch (error) {
-        console.error('Menu deletion error:', error);
-        res.status(500).json({ message: 'Error deleting menu item', error: error.message });
-    }
-});
-
-// Reservation Routes
-app.get('/reservations', auth, async (req, res) => {
-    try {
-        const reservations = await Reservation.find({ user: req.user._id });
-        res.json(reservations);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching reservations', error: error.message });
-    }
-});
-
-app.post('/reservations', auth, async (req, res) => {
-    try {
-        const reservation = new Reservation({
-            ...req.body,
-            user: req.user._id
-        });
-        await reservation.save();
-        res.status(201).json(reservation);
-    } catch (error) {
-        res.status(400).json({ message: 'Error creating reservation', error: error.message });
-    }
-});
-
-// Event Routes
-app.get('/events', async (req, res) => {
-    try {
-        const events = await Event.find();
-        res.json(events);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching events', error: error.message });
-    }
-});
-
-app.post('/events', auth, isAdmin, async (req, res) => {
-    try {
-        const event = new Event(req.body);
-        await event.save();
-        res.status(201).json(event);
-    } catch (error) {
-        res.status(400).json({ message: 'Error creating event', error: error.message });
-    }
-});
-
-// Patisserie Routes
-app.get('/patisserie', async (req, res) => {
-    try {
-        const items = await Patisserie.find();
-        res.json(items);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching patisserie items', error: error.message });
-    }
-});
-
-app.post('/patisserie', auth, isAdmin, upload.single('image'), async (req, res) => {
-    try {
-        const item = new Patisserie(req.body);
-        await item.save();
-        res.status(201).json(item);
-    } catch (error) {
-        res.status(400).json({ message: 'Error creating patisserie item', error: error.message });
-    }
-});
-
-// Delivery Routes
-app.get('/deliveries', auth, async (req, res) => {
-    try {
-        const deliveries = await Delivery.find({ user: req.user._id });
-        res.json(deliveries);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching deliveries', error: error.message });
-    }
-});
-
-app.post('/deliveries', auth, async (req, res) => {
-    try {
-        const delivery = new Delivery({
-            ...req.body,
-            user: req.user._id
-        });
-        await delivery.save();
-        res.status(201).json(delivery);
-    } catch (error) {
-        res.status(400).json({ message: 'Error creating delivery', error: error.message });
     }
 });
 
@@ -264,8 +105,7 @@ app.use((err, req, res, next) => {
         stack: err.stack,
         path: req.path,
         method: req.method,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV
+        timestamp: new Date().toISOString()
     });
 
     if (err.name === 'MulterError') {
@@ -280,11 +120,7 @@ app.use((err, req, res, next) => {
         return res.status(401).json({ message: 'Invalid token', error: err.message });
     }
 
-    res.status(500).json({
-        message: 'Something went wrong!',
-        error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
-        timestamp: new Date().toISOString()
-    });
+    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
 app.use((req, res) => {
@@ -292,59 +128,41 @@ app.use((req, res) => {
         res.status(204).end();
         return;
     }
+    console.log('404 Not Found:', {
+        path: req.path,
+        method: req.method,
+        availableRoutes: routes.map(r => r.path)
+    });
     res.status(404).json({
         message: 'Not Found',
         path: req.path,
         method: req.method,
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV
+        availableRoutes: routes.map(r => r.path)
     });
 });
 
-// Initialize database connection
-const initializeApp = async () => {
+// Initialize database connection before starting server
+const startServer = async () => {
     try {
         console.log('Initializing database connection...');
-        console.log('Environment:', process.env.NODE_ENV);
-        console.log('MongoDB URI exists:', !!process.env.MONGODB_URI);
-
         await connectDB();
         console.log('Database connection initialized successfully');
 
-        // Start local server if not in production
+        // Start server only if not in serverless environment
         if (process.env.NODE_ENV !== 'production') {
             const PORT = process.env.PORT || 3000;
             app.listen(PORT, () => {
-                console.log(`🚀 Server is running on http://localhost:${PORT}`);
-                console.log('Available routes:');
-                console.log('GET  /');
-                console.log('GET  /health');
-                console.log('POST /auth/register');
-                console.log('POST /auth/login');
-                console.log('GET  /menu');
-                console.log('GET  /menu/:id');
-                console.log('POST /menu');
-                console.log('PATCH /menu/:id');
-                console.log('DELETE /menu/:id');
-                console.log('GET  /reservations');
-                console.log('POST /reservations');
-                console.log('GET  /events');
-                console.log('POST /events');
-                console.log('GET  /patisserie');
-                console.log('POST /patisserie');
-                console.log('GET  /deliveries');
-                console.log('POST /deliveries');
+                console.log(`Server is running on port ${PORT}`);
             });
         }
     } catch (error) {
-        console.error('Failed to initialize app:', error);
-        console.error('Error stack:', error.stack);
+        console.error('Failed to start server:', error);
         process.exit(1);
     }
 };
 
-// Initialize the app
-initializeApp();
+startServer();
 
 // Export the Express app as a serverless function
 module.exports = app;
