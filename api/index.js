@@ -60,15 +60,20 @@ const routes = [
 ];
 
 console.log('Loading routes...');
-// Load routes synchronously since we're using CommonJS
 routes.forEach(route => {
     try {
         const router = require(route.file);
+        console.log(`Mounting route ${route.path}...`);
         app.use(route.path, router);
-        console.log(`✔ Loaded ${route.path}`);
+        console.log(`✔ Successfully mounted ${route.path}`);
     } catch (err) {
         console.error(`❌ Failed to load ${route.path}:`, err.message);
     }
+});
+
+// Add a test route to verify routing is working
+app.get('/test-route', (req, res) => {
+    res.json({ message: 'Test route is working' });
 });
 
 // Error and 404 handlers
