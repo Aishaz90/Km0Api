@@ -62,18 +62,39 @@ const routes = [
 console.log('Loading routes...');
 routes.forEach(route => {
     try {
+        console.log(`Attempting to load route from: ${route.file}`);
         const router = require(route.file);
-        console.log(`Mounting route ${route.path}...`);
+        console.log(`Router loaded successfully for ${route.path}`);
+
+        // Add debug middleware to the router
+        router.use((req, res, next) => {
+            console.log(`[${route.path}] ${req.method} ${req.path}`);
+            next();
+        });
+
         app.use(route.path, router);
         console.log(`✔ Successfully mounted ${route.path}`);
     } catch (err) {
-        console.error(`❌ Failed to load ${route.path}:`, err.message);
+        console.error(`❌ Failed to load ${route.path}:`, err);
+        console.error('Error stack:', err.stack);
     }
 });
 
 // Add a test route to verify routing is working
 app.get('/test-route', (req, res) => {
     res.json({ message: 'Test route is working' });
+});
+
+// Add a test menu route directly
+app.get('/test-menu', async (req, res) => {
+    try {
+        const Menu = require('../Model/menu.model');
+        const menuItems = await Menu.find({});
+        res.json(menuItems);
+    } catch (error) {
+        console.error('Error in test-menu route:', error);
+        res.status(500).json({ message: 'Error fetching menu items', error: error.message });
+    }
 });
 
 // Error and 404 handlers
