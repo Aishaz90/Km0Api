@@ -34,16 +34,23 @@ app.get('/health', (req, res) => {
 
 // DB connection middleware
 app.use(async (req, res, next) => {
+    console.log('Checking database connection...');
     try {
         if (!isConnected()) {
-            console.log('Connecting to database...');
+            console.log('Database not connected, attempting to connect...');
             await connectDB();
-            console.log('Database connected successfully');
+            console.log('Database connection attempt completed');
+        } else {
+            console.log('Database is already connected');
         }
         next();
     } catch (error) {
-        console.error('Database connection error:', error);
-        res.status(500).json({ message: 'Database connection error', error: error.message });
+        console.error('Database connection error in middleware:', error);
+        res.status(500).json({
+            message: 'Database connection error',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
