@@ -49,36 +49,64 @@ app.use(async (req, res, next) => {
     }
 });
 
-const routes = [
-    { path: '/auth', file: '../Route/auth.routes.js' },
-    { path: '/menu', file: '../Route/menu.routes.js' },
-    { path: '/reservations', file: '../Route/reservation.routes.js' },
-    { path: '/events', file: '../Route/event.routes.js' },
-    { path: '/patisserie', file: '../Route/patisserie.routes.js' },
-    { path: '/deliveries', file: '../Route/delivery.routes.js' },
-    { path: '/verification', file: '../Route/verification.routes.js' }
-];
+// Import all controllers
+const { register, login, getProfile, updateProfile, refreshToken } = require('../Controller/auth.controller');
+const { createMenuItem, getAllMenuItems, getMenuItemById, updateMenuItem, deleteMenuItem } = require('../Controller/menu.controller');
+const { createReservation, getAllReservations, getUserReservations, getReservationById, updateReservation, deleteReservation } = require('../Controller/reservation.controller');
+const { createEvent, getAllEvents, getEventById, updateEvent, deleteEvent } = require('../Controller/event.controller');
+const { createPatisserieItem, getAllPatisserieItems, getPatisserieItemById, updatePatisserieItem, deletePatisserieItem } = require('../Controller/patisserie.controller');
+const { createDelivery, getAllDeliveries, getUserDeliveries, getDeliveryById, updateDeliveryStatus, cancelDelivery } = require('../Controller/delivery.controller');
+const { verifyReservation, getVerificationPage } = require('../Controller/verification.controller');
 
-console.log('Loading routes...');
-routes.forEach(route => {
-    try {
-        console.log(`Attempting to load route from: ${route.file}`);
-        const router = require(route.file);
-        console.log(`Router loaded successfully for ${route.path}`);
+// Import middleware
+const { auth, isAdmin } = require('../Middleware/auth.middleware');
+const upload = require('../Middleware/upload.middleware');
 
-        // Add debug middleware to the router
-        router.use((req, res, next) => {
-            console.log(`[${route.path}] ${req.method} ${req.path}`);
-            next();
-        });
+// Auth routes
+app.post('/auth/register', register);
+app.post('/auth/refresh-token', refreshToken);
+app.get('/auth/profile', auth, getProfile);
 
-        app.use(route.path, router);
-        console.log(`✔ Successfully mounted ${route.path}`);
-    } catch (err) {
-        console.error(`❌ Failed to load ${route.path}:`, err);
-        console.error('Error stack:', err.stack);
-    }
-});
+// Menu routes
+app.get('/menu', getAllMenuItems);
+app.get('/menu/:id', getMenuItemById);
+app.post('/menu', auth, isAdmin, upload.single('image'), createMenuItem);
+app.put('/menu/:id', auth, isAdmin, upload.single('image'), updateMenuItem);
+app.delete('/menu/:id', auth, isAdmin, deleteMenuItem);
+
+// Reservation routes
+app.get('/reservations/all', auth, isAdmin, getAllReservations);
+app.post('/reservations', auth, createReservation);
+app.get('/reservations/my-reservations', auth, getUserReservations);
+app.get('/reservations/:id', auth, getReservationById);
+app.put('/reservations/:id', auth, updateReservation);
+app.delete('/reservations/:id', auth, deleteReservation);
+
+// Event routes
+app.get('/events', getAllEvents);
+app.get('/events/:id', getEventById);
+app.post('/events', auth, isAdmin, upload.single('image'), createEvent);
+app.put('/events/:id', auth, isAdmin, upload.single('image'), updateEvent);
+app.delete('/events/:id', auth, isAdmin, deleteEvent);
+
+// Patisserie routes
+app.get('/patisserie', getAllPatisserieItems);
+app.get('/patisserie/:id', getPatisserieItemById);
+app.post('/patisserie', auth, isAdmin, upload.single('image'), createPatisserieItem);
+app.put('/patisserie/:id', auth, isAdmin, upload.single('image'), updatePatisserieItem);
+app.delete('/patisserie/:id', auth, isAdmin, deletePatisserieItem);
+
+// Delivery routes
+app.post('/deliveries', auth, createDelivery);
+app.get('/deliveries/my-deliveries', auth, getUserDeliveries);
+app.get('/deliveries/:id', auth, getDeliveryById);
+app.get('/deliveries', auth, isAdmin, getAllDeliveries);
+app.put('/deliveries/:id/status', auth, isAdmin, updateDeliveryStatus);
+app.delete('/deliveries/:id', auth, cancelDelivery);
+
+// Verification routes
+app.get('/verification/:reservationId', getVerificationPage);
+app.post('/verification/verify/:reservationId', auth, isAdmin, verifyReservation);
 
 // Add a test route to verify routing is working
 app.get('/test-route', (req, res) => {
