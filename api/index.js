@@ -32,65 +32,41 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// DB connection middleware with timeout
+// DB connection middleware
 app.use(async (req, res, next) => {
-    const timeout = setTimeout(() => {
-        console.error('Database connection timeout');
-        res.status(500).json({ message: 'Database connection timeout' });
-    }, 5000);
-
     try {
         if (!isConnected()) {
             console.log('Connecting to database...');
             await connectDB();
             console.log('Database connected successfully');
         }
-        clearTimeout(timeout);
         next();
     } catch (error) {
-        clearTimeout(timeout);
         console.error('Database connection error:', error);
         res.status(500).json({ message: 'Database connection error', error: error.message });
     }
 });
 
-// Direct route loading
+
+const routes = [
+    { path: '/auth', file: path.join(__dirname, '../Route/auth.routes') },
+    { path: '/menu', file: path.join(__dirname, '../Route/menu.routes') },
+    { path: '/reservations', file: path.join(__dirname, '../Route/reservation.routes') },
+    { path: '/events', file: path.join(__dirname, '../Route/event.routes') },
+    { path: '/patisserie', file: path.join(__dirname, '../Route/patisserie.routes') },
+    { path: '/deliveries', file: path.join(__dirname, '../Route/delivery.routes') },
+    { path: '/verification', file: path.join(__dirname, '../Route/verification.routes') }
+];
 console.log('Loading routes...');
-
-// Auth routes
-const authRouter = require('../Route/auth.routes');
-app.use('/auth', authRouter);
-console.log('✔ Loaded /auth');
-
-// Menu routes
-const menuRouter = require('../Route/menu.routes');
-app.use('/menu', menuRouter);
-console.log('✔ Loaded /menu');
-
-// Reservation routes
-const reservationRouter = require('../Route/reservation.routes');
-app.use('/reservations', reservationRouter);
-console.log('✔ Loaded /reservations');
-
-// Event routes
-const eventRouter = require('../Route/event.routes');
-app.use('/events', eventRouter);
-console.log('✔ Loaded /events');
-
-// Patisserie routes
-const patisserieRouter = require('../Route/patisserie.routes');
-app.use('/patisserie', patisserieRouter);
-console.log('✔ Loaded /patisserie');
-
-// Delivery routes
-const deliveryRouter = require('../Route/delivery.routes');
-app.use('/deliveries', deliveryRouter);
-console.log('✔ Loaded /deliveries');
-
-// Verification routes
-const verificationRouter = require('../Route/verification.routes');
-app.use('/verification', verificationRouter);
-console.log('✔ Loaded /verification');
+routes.forEach(route => {
+    try {
+        const router = require(route.file);
+        app.use(route.path, router);
+        console.log(`✔ Loaded ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err.message);
+    }
+});
 
 // Error and 404 handlers
 app.use((err, req, res, next) => {
@@ -128,7 +104,7 @@ app.use((req, res) => {
         path: req.path,
         method: req.method,
         timestamp: new Date().toISOString(),
-        availableRoutes: ['/auth', '/menu', '/reservations', '/events', '/patisserie', '/deliveries', '/verification']
+        availableRoutes: routes.map(r => r.path)
     });
 });
 
