@@ -40,7 +40,12 @@ app.use(async (req, res, next) => {
             console.log('Database not connected, attempting to connect...');
             const connected = await connectDB();
             if (!connected) {
-                throw new Error('Failed to establish database connection');
+                console.error('Failed to establish database connection');
+                return res.status(503).json({
+                    message: 'Service temporarily unavailable',
+                    error: 'Database connection failed',
+                    retryAfter: 5
+                });
             }
             console.log('Database connection attempt completed');
         } else {
@@ -49,7 +54,7 @@ app.use(async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Database connection error in middleware:', error);
-        res.status(503).json({
+        return res.status(503).json({
             message: 'Service temporarily unavailable',
             error: 'Database connection failed',
             retryAfter: 5
