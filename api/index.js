@@ -4,7 +4,7 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
-
+const router = express.Router();
 // Create Express app
 const app = express();
 
@@ -134,7 +134,7 @@ const startServer = async () => {
         process.exit(1);
     }
 };
-
+app.use('/api', router);
 startServer();
 
 // Export the Express app as a serverless function
