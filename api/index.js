@@ -60,28 +60,68 @@ const routes = [
 ];
 
 console.log('Loading routes...');
-// Load routes asynchronously
-const loadRoutes = async () => {
-    for (const route of routes) {
-        try {
-            const router = await import(route.file);
-            app.use(route.path, router.default || router);
-            console.log(`✔ Loaded ${route.path}`);
-        } catch (err) {
-            console.error(`❌ Failed to load ${route.path}:`, err.message);
-        }
+// Load routes synchronously since we're using CommonJS
+routes.forEach(route => {
+    try {
+        const router = require(route.file);
+        app.use(route.path, router);
+        console.log(`✔ Loaded ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err.message);
     }
-};
+});
 
-// Initialize database connection and load routes before starting server
+// Error and 404 handlers
+app.use((err, req, res, next) => {
+    console.error('Error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method,
+        timestamp: new Date().toISOString()
+    });
+
+    if (err.name === 'MulterError') {
+        return res.status(400).json({ message: 'File upload error', error: err.message });
+    }
+
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Validation Error', error: err.message });
+    }
+
+    if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({ message: 'Invalid token', error: err.message });
+    }
+
+    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+});
+
+app.use((req, res) => {
+    if (req.path === '/favicon.ico') {
+        res.status(204).end();
+        return;
+    }
+    console.log('404 Not Found:', {
+        path: req.path,
+        method: req.method,
+        availableRoutes: routes.map(r => r.path)
+    });
+    res.status(404).json({
+        message: 'Not Found',
+        path: req.path,
+        method: req.method,
+        timestamp: new Date().toISOString(),
+        availableRoutes: routes.map(r => r.path)
+    });
+});
+
+// Initialize database connection before starting server
 const startServer = async () => {
     try {
         console.log('Initializing database connection...');
         await connectDB();
         console.log('Database connection initialized successfully');
-
-        // Load routes
-        await loadRoutes();
 
         // Start server only if not in serverless environment
         if (process.env.NODE_ENV !== 'production') {
