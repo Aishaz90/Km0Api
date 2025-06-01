@@ -67,6 +67,7 @@ app.post('/auth/register', async (req, res) => {
         const token = await user.generateAuthToken();
         res.status(201).json({ user, token });
     } catch (error) {
+        console.error('Register error:', error);
         res.status(400).json({ message: 'Error registering user', error: error.message });
     }
 });
@@ -77,6 +78,7 @@ app.post('/auth/login', async (req, res) => {
         const token = await user.generateAuthToken();
         res.json({ user, token });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(401).json({ message: 'Invalid login credentials', error: error.message });
     }
 });
@@ -91,6 +93,7 @@ app.get('/menu', async (req, res) => {
         const menuItems = await Menu.find(query);
         res.json(menuItems);
     } catch (error) {
+        console.error('Menu fetch error:', error);
         res.status(500).json({ message: 'Error fetching menu items', error: error.message });
     }
 });
@@ -101,6 +104,7 @@ app.get('/menu/:id', async (req, res) => {
         if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
         res.json(menuItem);
     } catch (error) {
+        console.error('Menu item fetch error:', error);
         res.status(500).json({ message: 'Error fetching menu item', error: error.message });
     }
 });
@@ -111,6 +115,7 @@ app.post('/menu', auth, isAdmin, upload.single('image'), async (req, res) => {
         await menuItem.save();
         res.status(201).json(menuItem);
     } catch (error) {
+        console.error('Menu creation error:', error);
         res.status(400).json({ message: 'Error creating menu item', error: error.message });
     }
 });
@@ -123,6 +128,7 @@ app.patch('/menu/:id', auth, isAdmin, upload.single('image'), async (req, res) =
         await menuItem.save();
         res.json(menuItem);
     } catch (error) {
+        console.error('Menu update error:', error);
         res.status(400).json({ message: 'Error updating menu item', error: error.message });
     }
 });
@@ -133,6 +139,7 @@ app.delete('/menu/:id', auth, isAdmin, async (req, res) => {
         if (!menuItem) return res.status(404).json({ message: 'Menu item not found' });
         res.json({ message: 'Menu item deleted successfully' });
     } catch (error) {
+        console.error('Menu deletion error:', error);
         res.status(500).json({ message: 'Error deleting menu item', error: error.message });
     }
 });
@@ -262,27 +269,20 @@ app.use((req, res) => {
     });
 });
 
-// Initialize database connection before starting server
-const startServer = async () => {
+// Initialize database connection
+const initializeApp = async () => {
     try {
         console.log('Initializing database connection...');
         await connectDB();
         console.log('Database connection initialized successfully');
-
-        // Start server only if not in serverless environment
-        if (process.env.NODE_ENV !== 'production') {
-            const PORT = process.env.PORT || 3000;
-            app.listen(PORT, () => {
-                console.log(`Server is running on port ${PORT}`);
-            });
-        }
     } catch (error) {
-        console.error('Failed to start server:', error);
+        console.error('Failed to initialize app:', error);
         process.exit(1);
     }
 };
 
-startServer();
+// Initialize the app
+initializeApp();
 
 // Export the Express app as a serverless function
 module.exports = app;
