@@ -5,6 +5,15 @@ const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
 
+// Import routes directly
+const authRouter = require('../Route/auth.routes.js');
+const menuRouter = require('../Route/menu.routes.js');
+const reservationRouter = require('../Route/reservation.routes.js');
+const eventRouter = require('../Route/event.routes.js');
+const patisserieRouter = require('../Route/patisserie.routes.js');
+const deliveryRouter = require('../Route/delivery.routes.js');
+const verificationRouter = require('../Route/verification.routes.js');
+
 // Create Express app
 const app = express();
 
@@ -49,36 +58,16 @@ app.use(async (req, res, next) => {
     }
 });
 
-const routes = [
-    { path: '/auth', file: '../Route/auth.routes.js' },
-    { path: '/menu', file: '../Route/menu.routes.js' },
-    { path: '/reservations', file: '../Route/reservation.routes.js' },
-    { path: '/events', file: '../Route/event.routes.js' },
-    { path: '/patisserie', file: '../Route/patisserie.routes.js' },
-    { path: '/deliveries', file: '../Route/delivery.routes.js' },
-    { path: '/verification', file: '../Route/verification.routes.js' }
-];
-
-console.log('Loading routes...');
-routes.forEach(route => {
-    try {
-        console.log(`Attempting to load route from: ${route.file}`);
-        const router = require(route.file);
-        console.log(`Router loaded successfully for ${route.path}`);
-
-        // Add debug middleware to the router
-        router.use((req, res, next) => {
-            console.log(`[${route.path}] ${req.method} ${req.path}`);
-            next();
-        });
-
-        app.use(route.path, router);
-        console.log(`✔ Successfully mounted ${route.path}`);
-    } catch (err) {
-        console.error(`❌ Failed to load ${route.path}:`, err);
-        console.error('Error stack:', err.stack);
-    }
-});
+// Mount routes directly
+console.log('Mounting routes...');
+app.use('/auth', authRouter);
+app.use('/menu', menuRouter);
+app.use('/reservations', reservationRouter);
+app.use('/events', eventRouter);
+app.use('/patisserie', patisserieRouter);
+app.use('/deliveries', deliveryRouter);
+app.use('/verification', verificationRouter);
+console.log('All routes mounted successfully');
 
 // Add a test route to verify routing is working
 app.get('/test-route', (req, res) => {
