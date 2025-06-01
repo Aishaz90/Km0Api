@@ -36,12 +36,34 @@ app.use((req, res, next) => {
 app.use('/images', express.static(path.join(__dirname, '../images')));
 
 // Root and health check routes
-app.get('/', (req, res) => {
-    res.status(200).json({ message: 'Welcome to KM0 API', status: 'operational', version: '1.0.0' });
+app.get('/', async (req, res) => {
+    try {
+        res.status(200).json({
+            message: 'Welcome to KM0 API',
+            status: 'operational',
+            version: '1.0.0',
+            environment: process.env.NODE_ENV,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Root route error:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
 });
 
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+    try {
+        const dbStatus = isConnected() ? 'connected' : 'disconnected';
+        res.status(200).json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            database: dbStatus,
+            environment: process.env.NODE_ENV
+        });
+    } catch (error) {
+        console.error('Health check error:', error);
+        res.status(500).json({ message: 'Health check failed', error: error.message });
+    }
 });
 
 // DB connection middleware
@@ -55,7 +77,11 @@ app.use(async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Database connection error:', error);
-        res.status(500).json({ message: 'Database connection error', error: error.message });
+        res.status(500).json({
+            message: 'Database connection error',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
@@ -238,7 +264,8 @@ app.use((err, req, res, next) => {
         stack: err.stack,
         path: req.path,
         method: req.method,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV
     });
 
     if (err.name === 'MulterError') {
@@ -253,7 +280,11 @@ app.use((err, req, res, next) => {
         return res.status(401).json({ message: 'Invalid token', error: err.message });
     }
 
-    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    res.status(500).json({
+        message: 'Something went wrong!',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.use((req, res) => {
@@ -265,7 +296,8 @@ app.use((req, res) => {
         message: 'Not Found',
         path: req.path,
         method: req.method,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV
     });
 });
 
@@ -273,6 +305,9 @@ app.use((req, res) => {
 const initializeApp = async () => {
     try {
         console.log('Initializing database connection...');
+        console.log('Environment:', process.env.NODE_ENV);
+        console.log('MongoDB URI exists:', !!process.env.MONGODB_URI);
+
         await connectDB();
         console.log('Database connection initialized successfully');
 
@@ -303,6 +338,7 @@ const initializeApp = async () => {
         }
     } catch (error) {
         console.error('Failed to initialize app:', error);
+        console.error('Error stack:', error.stack);
         process.exit(1);
     }
 };
