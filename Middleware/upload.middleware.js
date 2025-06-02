@@ -2,12 +2,31 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// Get the absolute path to the images directory
+const getImagesDir = () => {
+    // In development, use the project root
+    if (process.env.NODE_ENV === 'development') {
+        return path.join(process.cwd(), 'images');
+    }
+    // In production (serverless), use /tmp
+    return '/tmp/images';
+};
+
 // Create upload directories if they don't exist
 const createUploadDirs = () => {
-    const dirs = ['images/menu', 'images/patisserie', 'images/events'];
+    const baseDir = getImagesDir();
+    const dirs = ['menu', 'patisserie', 'events'];
+
+    // Create base images directory if it doesn't exist
+    if (!fs.existsSync(baseDir)) {
+        fs.mkdirSync(baseDir, { recursive: true });
+    }
+
+    // Create subdirectories
     dirs.forEach(dir => {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+        const fullPath = path.join(baseDir, dir);
+        if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
         }
     });
 };
@@ -17,15 +36,16 @@ createUploadDirs();
 // Configure storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        let uploadPath = 'images/';
+        const baseDir = getImagesDir();
+        let uploadPath = baseDir;
 
         // Determine the upload directory based on the route
         if (req.originalUrl.includes('/menu')) {
-            uploadPath += 'menu/';
+            uploadPath = path.join(baseDir, 'menu');
         } else if (req.originalUrl.includes('/patisserie')) {
-            uploadPath += 'patisserie/';
+            uploadPath = path.join(baseDir, 'patisserie');
         } else if (req.originalUrl.includes('/events')) {
-            uploadPath += 'events/';
+            uploadPath = path.join(baseDir, 'events');
         }
 
         cb(null, uploadPath);
