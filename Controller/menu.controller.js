@@ -1,8 +1,6 @@
 const Menu = require('../Model/menu.model');
-const imgur = require('imgur');
-
-// Configure Imgur
-imgur.setClientId(process.env.IMGUR_CLIENT_ID);
+const axios = require('axios');
+const FormData = require('form-data');
 
 // Get all menu items
 const getAllMenu = async (req, res) => {
@@ -72,8 +70,18 @@ const createMenu = async (req, res) => {
         }
 
         // Upload image to Imgur
-        const result = await imgur.uploadFile(req.file.path);
-        if (!result || !result.data || !result.data.link) {
+        const formData = new FormData();
+        formData.append('image', req.file.buffer.toString('base64'));
+        formData.append('type', 'base64');
+
+        const response = await axios.post('https://api.imgur.com/3/image', formData, {
+            headers: {
+                'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                ...formData.getHeaders()
+            }
+        });
+
+        if (!response.data || !response.data.data || !response.data.data.link) {
             throw new Error('Failed to upload image to Imgur');
         }
 
@@ -82,7 +90,7 @@ const createMenu = async (req, res) => {
             description: description.trim(),
             price: priceNum,
             category,
-            image: result.data.link,
+            image: response.data.data.link,
             isAvailable: true,
             ingredients: req.body.ingredients ? req.body.ingredients.split(',').map(i => i.trim()).filter(i => i) : []
         };
@@ -110,11 +118,21 @@ const updateMenu = async (req, res) => {
 
         if (req.file) {
             // Upload new image to Imgur
-            const result = await imgur.uploadFile(req.file.path);
-            if (!result || !result.data || !result.data.link) {
+            const formData = new FormData();
+            formData.append('image', req.file.buffer.toString('base64'));
+            formData.append('type', 'base64');
+
+            const response = await axios.post('https://api.imgur.com/3/image', formData, {
+                headers: {
+                    'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                    ...formData.getHeaders()
+                }
+            });
+
+            if (!response.data || !response.data.data || !response.data.data.link) {
                 throw new Error('Failed to upload image to Imgur');
             }
-            update.image = result.data.link;
+            update.image = response.data.data.link;
         }
 
         const menuItem = await Menu.findByIdAndUpdate(req.params.id, update, { new: true });

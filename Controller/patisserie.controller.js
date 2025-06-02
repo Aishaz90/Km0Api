@@ -1,8 +1,6 @@
 const Patisserie = require('../Model/patisserie.model');
-const imgur = require('imgur');
-
-// Configure Imgur
-imgur.setClientId(process.env.IMGUR_CLIENT_ID);
+const axios = require('axios');
+const FormData = require('form-data');
 
 // Create patisserie item
 const createPatisserieItem = async (req, res) => {
@@ -40,8 +38,18 @@ const createPatisserieItem = async (req, res) => {
         }
 
         // Upload image to Imgur
-        const result = await imgur.uploadFile(req.file.path);
-        if (!result || !result.data || !result.data.link) {
+        const formData = new FormData();
+        formData.append('image', req.file.buffer.toString('base64'));
+        formData.append('type', 'base64');
+
+        const response = await axios.post('https://api.imgur.com/3/image', formData, {
+            headers: {
+                'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                ...formData.getHeaders()
+            }
+        });
+
+        if (!response.data || !response.data.data || !response.data.data.link) {
             throw new Error('Failed to upload image to Imgur');
         }
 
@@ -50,8 +58,8 @@ const createPatisserieItem = async (req, res) => {
             description: description.trim(),
             price: priceNum,
             categorie,
-            image: result.data.link,
-            imageH: result.data.link,
+            image: response.data.data.link,
+            imageH: response.data.data.link,
             isAvailable: true,
             quantity: req.body.quantity || 0
         };
@@ -109,12 +117,22 @@ const updatePatisserieItem = async (req, res) => {
 
         if (req.file) {
             // Upload new image to Imgur
-            const result = await imgur.uploadFile(req.file.path);
-            if (!result || !result.data || !result.data.link) {
+            const formData = new FormData();
+            formData.append('image', req.file.buffer.toString('base64'));
+            formData.append('type', 'base64');
+
+            const response = await axios.post('https://api.imgur.com/3/image', formData, {
+                headers: {
+                    'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                    ...formData.getHeaders()
+                }
+            });
+
+            if (!response.data || !response.data.data || !response.data.data.link) {
                 throw new Error('Failed to upload image to Imgur');
             }
-            update.image = result.data.link;
-            update.imageH = result.data.link;
+            update.image = response.data.data.link;
+            update.imageH = response.data.data.link;
         }
 
         const patisserieItem = await Patisserie.findByIdAndUpdate(req.params.id, update, { new: true });

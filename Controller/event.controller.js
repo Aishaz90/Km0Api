@@ -1,8 +1,6 @@
 const Event = require('../Model/event.model');
-const imgur = require('imgur');
-
-// Configure Imgur
-imgur.setClientId(process.env.IMGUR_CLIENT_ID);
+const axios = require('axios');
+const FormData = require('form-data');
 
 // Create event
 const createEvent = async (req, res) => {
@@ -41,8 +39,18 @@ const createEvent = async (req, res) => {
         }
 
         // Upload image to Imgur
-        const result = await imgur.uploadFile(req.file.path);
-        if (!result || !result.data || !result.data.link) {
+        const formData = new FormData();
+        formData.append('image', req.file.buffer.toString('base64'));
+        formData.append('type', 'base64');
+
+        const response = await axios.post('https://api.imgur.com/3/image', formData, {
+            headers: {
+                'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                ...formData.getHeaders()
+            }
+        });
+
+        if (!response.data || !response.data.data || !response.data.data.link) {
             throw new Error('Failed to upload image to Imgur');
         }
 
@@ -52,7 +60,7 @@ const createEvent = async (req, res) => {
             date: new Date(date),
             location: location.trim(),
             price: priceNum,
-            image: result.data.link,
+            image: response.data.data.link,
             isActive: true
         };
 
@@ -116,11 +124,21 @@ const updateEvent = async (req, res) => {
 
         if (req.file) {
             // Upload new image to Imgur
-            const result = await imgur.uploadFile(req.file.path);
-            if (!result || !result.data || !result.data.link) {
+            const formData = new FormData();
+            formData.append('image', req.file.buffer.toString('base64'));
+            formData.append('type', 'base64');
+
+            const response = await axios.post('https://api.imgur.com/3/image', formData, {
+                headers: {
+                    'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                    ...formData.getHeaders()
+                }
+            });
+
+            if (!response.data || !response.data.data || !response.data.data.link) {
                 throw new Error('Failed to upload image to Imgur');
             }
-            update.image = result.data.link;
+            update.image = response.data.data.link;
         }
 
         const event = await Event.findByIdAndUpdate(req.params.id, update, { new: true });
