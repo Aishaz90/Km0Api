@@ -15,24 +15,12 @@ const generateTokens = (userId) => {
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
-
-    if (await User.findOne({ email })) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    const user = new User({ name, email, password, phone });
+    const user = new User(req.body);
     await user.save();
-
-    const tokens = generateTokens(user._id);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-      ...tokens
-    });
+    const token = user.generateAuthToken();
+    res.status(201).json({ user, token });
   } catch (error) {
-    res.status(500).json({ message: 'Registration failed', error: error.message });
+    res.status(400).json({ message: 'Error registering user' });
   }
 };
 
@@ -40,20 +28,20 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
 
-    const tokens = generateTokens(user._id);
+    const isValidPassword = await user.comparePassword(password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
 
-    res.json({
-      message: 'Login successful',
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-      ...tokens
-    });
+    const token = user.generateAuthToken();
+    res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
   } catch (error) {
-    res.status(500).json({ message: 'Login failed', error: error.message });
+    res.status(500).json({ message: 'Error logging in' });
   }
 };
 
@@ -82,7 +70,7 @@ const getProfile = async (req, res) => {
     const user = await User.findById(req.user._id).select('-password');
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch profile', error: error.message });
+    res.status(500).json({ message: 'Error fetching profile' });
   }
 };
 

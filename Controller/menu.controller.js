@@ -1,38 +1,17 @@
 const Menu = require('../Model/menu.model');
 
-// Create menu item
-const createMenuItem = async (req, res) => {
-    try {
-        const menuItem = new Menu(req.body);
-        await menuItem.save();
-        res.status(201).json(menuItem);
-    } catch (error) {
-        res.status(400).json({ message: 'Error creating menu item', error: error.message });
-    }
-};
-
 // Get all menu items
-const getAllMenuItems = async (req, res) => {
+exports.getAllMenu = async (req, res) => {
     try {
-        const { category, isAvailable } = req.query;
-        const query = {};
-
-        if (category) {
-            query.category = category;
-        }
-        if (isAvailable !== undefined) {
-            query.isAvailable = isAvailable === 'true';
-        }
-
-        const menuItems = await Menu.find(query);
+        const menuItems = await Menu.find({});
         res.json(menuItems);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching menu items', error: error.message });
+        res.status(500).json({ message: 'Error fetching menu items' });
     }
 };
 
 // Get menu item by ID
-const getMenuItemById = async (req, res) => {
+exports.getMenuById = async (req, res) => {
     try {
         const menuItem = await Menu.findById(req.params.id);
         if (!menuItem) {
@@ -40,51 +19,59 @@ const getMenuItemById = async (req, res) => {
         }
         res.json(menuItem);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching menu item', error: error.message });
+        res.status(500).json({ message: 'Error fetching menu item' });
+    }
+};
+
+// Create menu item
+exports.createMenu = async (req, res) => {
+    try {
+        const menuData = {
+            ...req.body,
+            image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : undefined
+        };
+        const menuItem = new Menu(menuData);
+        await menuItem.save();
+        res.status(201).json(menuItem);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating menu item' });
     }
 };
 
 // Update menu item
-const updateMenuItem = async (req, res) => {
-    const updates = Object.keys(req.body);
-    const allowedUpdates = ['name', 'description', 'price', 'category', 'image', 'isAvailable', 'ingredients', 'allergens', 'nutritionalInfo'];
-    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-    if (!isValidOperation) {
-        return res.status(400).json({ message: 'Invalid updates' });
-    }
-
+exports.updateMenu = async (req, res) => {
     try {
-        const menuItem = await Menu.findById(req.params.id);
+        const update = { ...req.body };
+        if (req.file) {
+            update.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        }
+        const menuItem = await Menu.findByIdAndUpdate(req.params.id, update, { new: true });
         if (!menuItem) {
             return res.status(404).json({ message: 'Menu item not found' });
         }
-
-        updates.forEach(update => menuItem[update] = req.body[update]);
-        await menuItem.save();
         res.json(menuItem);
     } catch (error) {
-        res.status(400).json({ message: 'Error updating menu item', error: error.message });
+        res.status(400).json({ message: 'Error updating menu item' });
     }
 };
 
 // Delete menu item
-const deleteMenuItem = async (req, res) => {
+exports.deleteMenu = async (req, res) => {
     try {
         const menuItem = await Menu.findByIdAndDelete(req.params.id);
         if (!menuItem) {
             return res.status(404).json({ message: 'Menu item not found' });
         }
-        res.json({ message: 'Menu item deleted successfully' });
+        res.json({ message: 'Menu item deleted' });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting menu item', error: error.message });
+        res.status(500).json({ message: 'Error deleting menu item' });
     }
 };
 
 module.exports = {
-    createMenuItem,
-    getAllMenuItems,
-    getMenuItemById,
-    updateMenuItem,
-    deleteMenuItem
+    getAllMenu,
+    getMenuById,
+    createMenu,
+    updateMenu,
+    deleteMenu
 }; 
