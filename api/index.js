@@ -6,6 +6,7 @@ const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
 const { auth, isAdmin } = require('../Middleware/auth.middleware');
 const upload = require('../Middleware/upload.middleware');
+const port = 3000; 
 
 // Import all controllers
 const { register, login, refreshToken, getProfile, updateProfile } = require('../Controller/auth.controller');
@@ -98,7 +99,6 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
     res.status(404).json({ message: 'Not Found' });
 });
-
-// Export for Vercel
-module.exports = app;
-module.exports.handler = serverless(app);
+app.listen(port, () => { 
+    console.log(`Serveur démarré sur le port ${port}`); 
+}); 
