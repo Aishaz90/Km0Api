@@ -65,7 +65,18 @@ app.get('/menu', async (req, res) => {
         res.status(500).json({ message: 'Error fetching menu items', error: error.message });
     }
 });
-
+app.get('/menu/:id', async (req, res) => {
+    try {
+        const Menu = require('../Model/menu.model');
+        const menuItem = await Menu.findById(req.params.id);
+        if (!menuItem) {
+            return res.status(404).json({ message: 'Menu item not found' });
+        }
+        res.json(menuItem);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching menu item', error: error.message });
+    }
+});
 // Error and 404 handlers
 app.use((err, req, res, next) => {
     console.error('Error details:', {
