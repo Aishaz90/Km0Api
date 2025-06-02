@@ -4,8 +4,6 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
-const { auth, isAdmin } = require('../Middleware/auth.middleware');
-const multer = require('multer');
 
 // Create Express app
 const app = express();
@@ -36,15 +34,6 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Configure multer for memory storage (better for serverless)
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    }
-});
-
 // DB connection middleware
 app.use(async (req, res, next) => {
     try {
@@ -56,77 +45,98 @@ app.use(async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Database connection error:', error);
-        res.status(500).json({ message: 'Database connection error' });
+        res.status(500).json({ message: 'Database connection error', error: error.message });
     }
 });
 
-// Add a test route to verify routing is working
-app.get('/test-route', (req, res) => {
-    res.json({ message: 'Test route is working' });
-});
+const routes = [
+    { path: '/auth', file: path.join(__dirname, '../Route/auth.routes') },
+    { path: '/menu', file: path.join(__dirname, '../Route/menu.routes') },
+    { path: '/reservations', file: path.join(__dirname, '../Route/reservation.routes') },
+    { path: '/events', file: path.join(__dirname, '../Route/event.routes') },
+    { path: '/patisserie', file: path.join(__dirname, '../Route/patisserie.routes') },
+    { path: '/deliveries', file: path.join(__dirname, '../Route/delivery.routes') },
+    { path: '/verification', file: path.join(__dirname, '../Route/verification.routes') }
+];
 
-// Add a test menu route directly
-app.get('/menu', async (req, res) => {
+console.log('Loading routes...');
+routes.forEach(route => {
     try {
-        const Menu = require('../Model/menu.model');
-        const menuItems = await Menu.find({});
-        res.json(menuItems);
-    } catch (error) {
-        console.error('Error in test-menu route:', error);
-        res.status(500).json({ message: 'Error fetching menu items' });
+        const router = require(route.file);
+        app.use(route.path, router);
+        console.log(`✔ Loaded ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err.message);
     }
 });
 
-app.get('/menu/:id', async (req, res) => {
-    try {
-        const Menu = require('../Model/menu.model');
-        const menuItem = await Menu.findById(req.params.id);
-        if (!menuItem) {
-            return res.status(404).json({ message: 'Menu item not found' });
-        }
-        res.json(menuItem);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching menu item' });
-    }
-});
-
-app.post('/menu', auth, isAdmin, upload.single('image'), async (req, res) => {
-    try {
-        const Menu = require('../Model/menu.model');
-
-        // Create menu item with base64 image if provided
-        const menuData = {
-            ...req.body,
-            image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : undefined
-        };
-
-        const menuItem = new Menu(menuData);
-        await menuItem.save();
-        res.status(201).json(menuItem);
-    } catch (error) {
-        console.error('Error creating menu item:', error);
-        res.status(400).json({ message: 'Error creating menu item' });
-    }
-});
-
-// Error handler
+// Error and 404 handlers
 app.use((err, req, res, next) => {
-    console.error('Error:', err);
-    if (err instanceof multer.MulterError) {
-        return res.status(400).json({ message: 'File upload error' });
+    console.error('Error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method,
+        timestamp: new Date().toISOString()
+    });
+
+    if (err.name === 'MulterError') {
+        return res.status(400).json({ message: 'File upload error', error: err.message });
     }
-    res.status(500).json({ message: 'Server error' });
+
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Validation Error', error: err.message });
+    }
+
+    if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({ message: 'Invalid token', error: err.message });
+    }
+
+    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
-// 404 handler
 app.use((req, res) => {
-    res.status(404).json({ message: 'Not Found' });
+    if (req.path === '/favicon.ico') {
+        res.status(204).end();
+        return;
+    }
+    console.log('404 Not Found:', {
+        path: req.path,
+        method: req.method,
+        availableRoutes: routes.map(r => r.path)
+    });
+    res.status(404).json({
+        message: 'Not Found',
+        path: req.path,
+        method: req.method,
+        timestamp: new Date().toISOString(),
+        availableRoutes: routes.map(r => r.path)
+    });
 });
 
-// Create serverless handler
-const handler = serverless(app, {
-    basePath: '/api'
-});
+// Initialize database connection before starting server
+const startServer = async () => {
+    try {
+        console.log('Initializing database connection...');
+        await connectDB();
+        console.log('Database connection initialized successfully');
 
-// Export for Vercel
-module.exports = { handler };
+        // Start server only if not in serverless environment
+        if (process.env.NODE_ENV !== 'production') {
+            const PORT = process.env.PORT || 3000;
+            app.listen(PORT, () => {
+                console.log(`Server is running on port ${PORT}`);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
+
+// Export the Express app as a serverless function
+module.exports = app;
+module.exports.handler = serverless(app);
