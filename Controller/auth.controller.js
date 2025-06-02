@@ -15,12 +15,54 @@ const generateTokens = (userId) => {
 
 const register = async (req, res) => {
   try {
-    const user = new User(req.body);
+    // Validate required fields
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: 'Missing required fields',
+        details: {
+          name: !name ? 'Name is required' : null,
+          email: !email ? 'Email is required' : null,
+          password: !password ? 'Password is required' : null
+        }
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        message: 'Registration failed',
+        details: 'Email already registered'
+      });
+    }
+
+    // Create new user
+    const user = new User({
+      name,
+      email,
+      password
+    });
+
     await user.save();
     const token = user.generateAuthToken();
-    res.status(201).json({ user, token });
+
+    res.status(201).json({
+      message: 'Registration successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      },
+      token
+    });
   } catch (error) {
-    res.status(400).json({ message: 'Error registering user' });
+    console.error('Registration error:', error);
+    res.status(400).json({
+      message: 'Error registering user',
+      details: error.message
+    });
   }
 };
 
