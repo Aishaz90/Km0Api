@@ -6,10 +6,10 @@ const { connectDB, isConnected } = require('./db');
 const mongoose = require('mongoose');
 const { auth, isAdmin } = require('./Middleware/auth.middleware');
 const upload = require('./Middleware/upload.middleware');
-const port = 3000;
+const port = 5000;
 
 // Import all controllers
-const { register, login, refreshToken, getProfile, updateProfile } = require('./Controller/auth.controller');
+const { register, login, refreshToken, getProfile, updateProfile, logout } = require('./Controller/auth.controller');
 const { getAllMenu, getMenuById, createMenu, updateMenu, deleteMenu } = require('./Controller/menu.controller');
 const {
     getAllPatisserieItems: getAllPatisserie,
@@ -60,11 +60,12 @@ app.use(async (req, res, next) => {
         res.status(500).json({ message: 'Database connection error' });
     }
 });
-app.get('/',(req, res) => { res.json({ message: 'Welcome to KM0 API'})})
+app.get('/', (req, res) => { res.json({ message: 'Welcome to KM0 API' }) })
 // Auth routes
 app.post('/auth/register', register);
 app.post('/auth/login', login);
 app.post('/auth/refresh-token', refreshToken);
+app.post('/auth/logout', auth, logout);
 app.get('/auth/profile', auth, getProfile);
 app.put('/auth/profile', auth, updateProfile);
 
