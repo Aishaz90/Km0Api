@@ -2,23 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const serverless = require('serverless-http');
-const { connectDB, isConnected } = require('../db');
+const { connectDB, isConnected } = require('./db');
 const mongoose = require('mongoose');
-const { auth, isAdmin } = require('../Middleware/auth.middleware');
-const upload = require('../Middleware/upload.middleware');
+const { auth, isAdmin } = require('./Middleware/auth.middleware');
+const upload = require('./Middleware/upload.middleware');
 const port = 3000;
 
 // Import all controllers
-const { register, login, refreshToken, getProfile, updateProfile } = require('../Controller/auth.controller');
-const { getAllMenu, getMenuById, createMenu, updateMenu, deleteMenu } = require('../Controller/menu.controller');
+const { register, login, refreshToken, getProfile, updateProfile } = require('./Controller/auth.controller');
+const { getAllMenu, getMenuById, createMenu, updateMenu, deleteMenu } = require('./Controller/menu.controller');
 const {
     getAllPatisserieItems: getAllPatisserie,
     getPatisserieItemById: getPatisserieById,
     createPatisserieItem: createPatisserie,
     updatePatisserieItem: updatePatisserie,
     deletePatisserieItem: deletePatisserie
-} = require('../Controller/patisserie.controller');
-const { getAllEvents, getEventById, createEvent, updateEvent, deleteEvent } = require('../Controller/event.controller');
+} = require('./Controller/patisserie.controller');
+const { getAllEvents, getEventById, createEvent, updateEvent, deleteEvent } = require('./Controller/event.controller');
 const {
     getAllReservations,
     getUserReservations: getMyReservations,
@@ -26,7 +26,7 @@ const {
     createReservation,
     updateReservation,
     deleteReservation
-} = require('../Controller/reservation.controller');
+} = require('./Controller/reservation.controller');
 const {
     getAllDeliveries,
     getUserDeliveries: getMyDeliveries,
@@ -35,11 +35,11 @@ const {
     updateDelivery,
     deleteDelivery,
     updateDeliveryStatus
-} = require('../Controller/delivery.controller');
+} = require('./Controller/delivery.controller');
 const {
     verifyReservation,
     getVerificationPage: getVerification
-} = require('../Controller/verification.controller');
+} = require('./Controller/verification.controller');
 
 // Create Express app
 const app = express();
