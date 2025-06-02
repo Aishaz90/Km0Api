@@ -26,15 +26,69 @@ const getMenuById = async (req, res) => {
 // Create menu item
 const createMenu = async (req, res) => {
     try {
+        // Validate required fields
+        const { name, description, price, category } = req.body;
+
+        if (!name || !description || !price || !category) {
+            return res.status(400).json({
+                message: 'Missing required fields',
+                details: {
+                    name: !name ? 'Name is required' : null,
+                    description: !description ? 'Description is required' : null,
+                    price: !price ? 'Price is required' : null,
+                    category: !category ? 'Category is required' : null
+                }
+            });
+        }
+
+        // Validate category
+        const validCategories = ['appetizer', 'main', 'dessert', 'beverage'];
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({
+                message: 'Invalid category',
+                details: `Category must be one of: ${validCategories.join(', ')}`
+            });
+        }
+
+        // Validate price
+        const priceNum = Number(price);
+        if (isNaN(priceNum) || priceNum < 0) {
+            return res.status(400).json({
+                message: 'Invalid price',
+                details: 'Price must be a positive number'
+            });
+        }
+
+        // Validate image
+        if (!req.file) {
+            return res.status(400).json({
+                message: 'Image is required',
+                details: 'Please upload an image file'
+            });
+        }
+
         const menuData = {
-            ...req.body,
-            image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : undefined
+            name,
+            description,
+            price: priceNum,
+            category,
+            image: `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+            ingredients: req.body.ingredients ? req.body.ingredients.split(',').map(i => i.trim()) : []
         };
+
         const menuItem = new Menu(menuData);
         await menuItem.save();
-        res.status(201).json(menuItem);
+
+        res.status(201).json({
+            message: 'Menu item created successfully',
+            menuItem
+        });
     } catch (error) {
-        res.status(400).json({ message: 'Error creating menu item' });
+        console.error('Create menu error:', error);
+        res.status(400).json({
+            message: 'Error creating menu item',
+            details: error.message
+        });
     }
 };
 
