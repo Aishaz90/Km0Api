@@ -7,28 +7,14 @@ const mongoose = require('mongoose');
 const { auth, isAdmin } = require('../Middleware/auth.middleware');
 const upload = require('../Middleware/upload.middleware');
 
-// Import controllers
-const {
-    getAllArticles,
-    getArticleById,
-    createArticle,
-    updateArticle,
-    deleteArticle
-} = require('../Controller/article.controller');
-
-const {
-    getAllMenu,
-    getMenuById,
-    createMenu,
-    updateMenu,
-    deleteMenu
-} = require('../Controller/menu.controller');
-
-const {
-    register,
-    login,
-    getProfile
-} = require('../Controller/auth.controller');
+// Import all controllers
+const { register, login, refreshToken, getProfile, updateProfile } = require('../Controller/auth.controller');
+const { getAllMenu, getMenuById, createMenu, updateMenu, deleteMenu } = require('../Controller/menu.controller');
+const { getAllPatisserie, getPatisserieById, createPatisserie, updatePatisserie, deletePatisserie } = require('../Controller/patisserie.controller');
+const { getAllEvents, getEventById, createEvent, updateEvent, deleteEvent } = require('../Controller/event.controller');
+const { getAllReservations, getReservationById, createReservation, updateReservation, deleteReservation, getMyReservations } = require('../Controller/reservation.controller');
+const { getAllDeliveries, getDeliveryById, createDelivery, updateDelivery, deleteDelivery, getMyDeliveries, updateDeliveryStatus } = require('../Controller/delivery.controller');
+const { verifyReservation, getVerification } = require('../Controller/verification.controller');
 
 // Create Express app
 const app = express();
@@ -50,12 +36,12 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Article routes
-app.get('/articles', getAllArticles);
-app.get('/articles/:id', getArticleById);
-app.post('/articles', auth, isAdmin, upload.single('image'), createArticle);
-app.put('/articles/:id', auth, isAdmin, upload.single('image'), updateArticle);
-app.delete('/articles/:id', auth, isAdmin, deleteArticle);
+// Auth routes
+app.post('/auth/register', register);
+app.post('/auth/login', login);
+app.post('/auth/refresh-token', refreshToken);
+app.get('/auth/profile', auth, getProfile);
+app.put('/auth/profile', auth, updateProfile);
 
 // Menu routes
 app.get('/menu', getAllMenu);
@@ -64,10 +50,40 @@ app.post('/menu', auth, isAdmin, upload.single('image'), createMenu);
 app.put('/menu/:id', auth, isAdmin, upload.single('image'), updateMenu);
 app.delete('/menu/:id', auth, isAdmin, deleteMenu);
 
-// Auth routes
-app.post('/auth/register', register);
-app.post('/auth/login', login);
-app.get('/auth/profile', auth, getProfile);
+// Patisserie routes
+app.get('/patisserie', getAllPatisserie);
+app.get('/patisserie/:id', getPatisserieById);
+app.post('/patisserie', auth, isAdmin, upload.single('image'), createPatisserie);
+app.put('/patisserie/:id', auth, isAdmin, upload.single('image'), updatePatisserie);
+app.delete('/patisserie/:id', auth, isAdmin, deletePatisserie);
+
+// Event routes
+app.get('/events', getAllEvents);
+app.get('/events/:id', getEventById);
+app.post('/events', auth, isAdmin, upload.single('image'), createEvent);
+app.put('/events/:id', auth, isAdmin, upload.single('image'), updateEvent);
+app.delete('/events/:id', auth, isAdmin, deleteEvent);
+
+// Reservation routes
+app.get('/reservations', auth, isAdmin, getAllReservations);
+app.get('/reservations/my-reservations', auth, getMyReservations);
+app.get('/reservations/:id', auth, getReservationById);
+app.post('/reservations', auth, createReservation);
+app.put('/reservations/:id', auth, updateReservation);
+app.delete('/reservations/:id', auth, deleteReservation);
+
+// Delivery routes
+app.get('/deliveries', auth, isAdmin, getAllDeliveries);
+app.get('/deliveries/my-deliveries', auth, getMyDeliveries);
+app.get('/deliveries/:id', auth, getDeliveryById);
+app.post('/deliveries', auth, createDelivery);
+app.put('/deliveries/:id', auth, updateDelivery);
+app.put('/deliveries/:id/status', auth, isAdmin, updateDeliveryStatus);
+app.delete('/deliveries/:id', auth, deleteDelivery);
+
+// Verification routes
+app.get('/verification/:reservationId', getVerification);
+app.post('/verification/verify/:reservationId', auth, isAdmin, verifyReservation);
 
 // Error handler
 app.use((err, req, res, next) => {
