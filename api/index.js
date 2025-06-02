@@ -539,15 +539,23 @@ app.use((req, res) => {
     });
 });
 
-// Initialize database connection before starting server
-const startServer = async () => {
+// Initialize database connection
+const initializeDB = async () => {
     try {
         console.log('Initializing database connection...');
         await connectDB();
         console.log('Database connection initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize database:', error);
+        throw error;
+    }
+};
 
-        // Start server only if not in serverless environment
-        if (process.env.NODE_ENV !== 'production') {
+// Start server for local development
+if (process.env.NODE_ENV !== 'production') {
+    const startServer = async () => {
+        try {
+            await initializeDB();
             const PORT = process.env.PORT || 3000;
             app.listen(PORT, () => {
                 console.log('=================================');
@@ -555,25 +563,27 @@ const startServer = async () => {
                 console.log(`API is available at http://localhost:${PORT}`);
                 console.log('=================================');
             });
+        } catch (error) {
+            console.error('Failed to start server:', error);
+            process.exit(1);
         }
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
-};
-
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-    console.log('Starting server in development mode...');
+    };
     startServer();
-} else {
-    console.log('Starting server in production mode...');
 }
 
 // Export the Express app as a serverless function
-const handler = serverless(app, {
-    basePath: '/api',
-    callbackWaitsForEmptyEventLoop: false
-});
+const handler = async (event, context) => {
+    // Initialize DB connection for each serverless invocation
+    await initializeDB();
+
+    // Configure serverless handler
+    const serverlessHandler = serverless(app, {
+        basePath: '/api',
+        callbackWaitsForEmptyEventLoop: false
+    });
+
+    // Execute the handler
+    return serverlessHandler(event, context);
+};
 
 module.exports = { handler };
