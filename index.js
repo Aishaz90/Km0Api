@@ -60,7 +60,7 @@ app.use(async (req, res, next) => {
         res.status(500).json({ message: 'Database connection error' });
     }
 });
-
+app.get('/',(req, res) => { res.json({ message: 'Welcome to KM0 API'})})
 // Auth routes
 app.post('/auth/register', register);
 app.post('/auth/login', login);
