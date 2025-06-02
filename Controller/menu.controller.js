@@ -1,4 +1,8 @@
 const Menu = require('../Model/menu.model');
+const imgur = require('imgur');
+
+// Configure Imgur
+imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 
 // Get all menu items
 const getAllMenu = async (req, res) => {
@@ -67,12 +71,18 @@ const createMenu = async (req, res) => {
             });
         }
 
+        // Upload image to Imgur
+        const result = await imgur.uploadFile(req.file.path);
+        if (!result || !result.data || !result.data.link) {
+            throw new Error('Failed to upload image to Imgur');
+        }
+
         const menuData = {
             name: name.trim(),
             description: description.trim(),
             price: priceNum,
             category,
-            image: `/images/menu/${req.file.filename}`,
+            image: result.data.link,
             isAvailable: true,
             ingredients: req.body.ingredients ? req.body.ingredients.split(',').map(i => i.trim()).filter(i => i) : []
         };
@@ -97,9 +107,16 @@ const createMenu = async (req, res) => {
 const updateMenu = async (req, res) => {
     try {
         const update = { ...req.body };
+
         if (req.file) {
-            update.image = `/images/menu/${req.file.filename}`;
+            // Upload new image to Imgur
+            const result = await imgur.uploadFile(req.file.path);
+            if (!result || !result.data || !result.data.link) {
+                throw new Error('Failed to upload image to Imgur');
+            }
+            update.image = result.data.link;
         }
+
         const menuItem = await Menu.findByIdAndUpdate(req.params.id, update, { new: true });
         if (!menuItem) {
             return res.status(404).json({ message: 'Menu item not found' });
@@ -113,10 +130,15 @@ const updateMenu = async (req, res) => {
 // Delete menu item
 const deleteMenu = async (req, res) => {
     try {
-        const menuItem = await Menu.findByIdAndDelete(req.params.id);
+        const menuItem = await Menu.findById(req.params.id);
         if (!menuItem) {
             return res.status(404).json({ message: 'Menu item not found' });
         }
+
+        // Note: Imgur doesn't provide a way to delete images via their API
+        // The image will remain on Imgur's servers
+
+        await Menu.findByIdAndDelete(req.params.id);
         res.json({ message: 'Menu item deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting menu item' });

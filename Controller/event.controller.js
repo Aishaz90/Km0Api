@@ -1,13 +1,74 @@
 const Event = require('../Model/event.model');
+const imgur = require('imgur');
+
+// Configure Imgur
+imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 
 // Create event
 const createEvent = async (req, res) => {
     try {
-        const event = new Event(req.body);
+        // Validate required fields
+        const { title, description, date, location, price } = req.body;
+
+        if (!title || !description || !date || !location || !price) {
+            return res.status(400).json({
+                message: 'Missing required fields',
+                details: {
+                    title: !title ? 'Title is required' : null,
+                    description: !description ? 'Description is required' : null,
+                    date: !date ? 'Date is required' : null,
+                    location: !location ? 'Location is required' : null,
+                    price: !price ? 'Price is required' : null
+                }
+            });
+        }
+
+        // Validate price
+        const priceNum = Number(price);
+        if (isNaN(priceNum) || priceNum < 0) {
+            return res.status(400).json({
+                message: 'Invalid price',
+                details: 'Price must be a positive number'
+            });
+        }
+
+        // Validate image
+        if (!req.file) {
+            return res.status(400).json({
+                message: 'Image is required',
+                details: 'Please upload an image file'
+            });
+        }
+
+        // Upload image to Imgur
+        const result = await imgur.uploadFile(req.file.path);
+        if (!result || !result.data || !result.data.link) {
+            throw new Error('Failed to upload image to Imgur');
+        }
+
+        const eventData = {
+            title: title.trim(),
+            description: description.trim(),
+            date: new Date(date),
+            location: location.trim(),
+            price: priceNum,
+            image: result.data.link,
+            isActive: true
+        };
+
+        const event = new Event(eventData);
         await event.save();
-        res.status(201).json(event);
+
+        res.status(201).json({
+            message: 'Event created successfully',
+            event
+        });
     } catch (error) {
-        res.status(400).json({ message: 'Error creating event', error: error.message });
+        console.error('Create event error:', error);
+        res.status(400).json({
+            message: 'Error creating event',
+            details: error.message
+        });
     }
 };
 
@@ -50,38 +111,43 @@ const getEventById = async (req, res) => {
 
 // Update event
 const updateEvent = async (req, res) => {
-    const updates = Object.keys(req.body);
-    const allowedUpdates = ['name', 'description', 'type', 'date', 'startTime', 'endTime', 'capacity', 'price', 'image', 'isAvailable', 'includedServices', 'additionalNotes'];
-    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-
-    if (!isValidOperation) {
-        return res.status(400).json({ message: 'Invalid updates' });
-    }
-
     try {
-        const event = await Event.findById(req.params.id);
+        const update = { ...req.body };
+
+        if (req.file) {
+            // Upload new image to Imgur
+            const result = await imgur.uploadFile(req.file.path);
+            if (!result || !result.data || !result.data.link) {
+                throw new Error('Failed to upload image to Imgur');
+            }
+            update.image = result.data.link;
+        }
+
+        const event = await Event.findByIdAndUpdate(req.params.id, update, { new: true });
         if (!event) {
             return res.status(404).json({ message: 'Event not found' });
         }
-
-        updates.forEach(update => event[update] = req.body[update]);
-        await event.save();
         res.json(event);
     } catch (error) {
-        res.status(400).json({ message: 'Error updating event', error: error.message });
+        res.status(400).json({ message: 'Error updating event' });
     }
 };
 
 // Delete event
 const deleteEvent = async (req, res) => {
     try {
-        const event = await Event.findByIdAndDelete(req.params.id);
+        const event = await Event.findById(req.params.id);
         if (!event) {
             return res.status(404).json({ message: 'Event not found' });
         }
-        res.json({ message: 'Event deleted successfully' });
+
+        // Note: Imgur doesn't provide a way to delete images via their API
+        // The image will remain on Imgur's servers
+
+        await Event.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Event deleted' });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting event', error: error.message });
+        res.status(500).json({ message: 'Error deleting event' });
     }
 };
 
