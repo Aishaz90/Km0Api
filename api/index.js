@@ -4,6 +4,10 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
+const { auth, isAdmin } = require('../Middleware/auth.middleware');
+const upload = require('../Middleware/upload.middleware');
+
+console.log('Starting server initialization...');
 
 // Create Express app
 const app = express();
@@ -27,10 +31,12 @@ app.use('/images', express.static(path.join(__dirname, '../images')));
 
 // Root and health check routes
 app.get('/', (req, res) => {
+    console.log('Root route accessed');
     res.status(200).json({ message: 'Welcome to KM0 API', status: 'operational', version: '1.0.0' });
 });
 
 app.get('/health', (req, res) => {
+    console.log('Health check route accessed');
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -532,5 +538,42 @@ app.use((req, res) => {
         availableRoutes: routes.map(r => r.path)
     });
 });
-module.exports = app;
-module.exports.handler = serverless(app);
+
+// Initialize database connection before starting server
+const startServer = async () => {
+    try {
+        console.log('Initializing database connection...');
+        await connectDB();
+        console.log('Database connection initialized successfully');
+
+        // Start server only if not in serverless environment
+        if (process.env.NODE_ENV !== 'production') {
+            const PORT = process.env.PORT || 3000;
+            app.listen(PORT, () => {
+                console.log('=================================');
+                console.log(`Server is running on port ${PORT}`);
+                console.log(`API is available at http://localhost:${PORT}`);
+                console.log('=================================');
+            });
+        }
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    console.log('Starting server in development mode...');
+    startServer();
+} else {
+    console.log('Starting server in production mode...');
+}
+
+// Export the Express app as a serverless function
+const handler = serverless(app, {
+    basePath: '/api',
+    callbackWaitsForEmptyEventLoop: false
+});
+
+module.exports = { handler };
