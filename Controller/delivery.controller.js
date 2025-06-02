@@ -119,6 +119,68 @@ const getDeliveryById = async (req, res) => {
     }
 };
 
+// Update delivery
+const updateDelivery = async (req, res) => {
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ['deliveryDate', 'deliveryTime', 'deliveryAddress', 'items', 'specialInstructions'];
+    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+
+    if (!isValidOperation) {
+        return res.status(400).json({ message: 'Invalid updates' });
+    }
+
+    try {
+        const delivery = await Delivery.findById(req.params.id);
+
+        if (!delivery) {
+            return res.status(404).json({ message: 'Delivery not found' });
+        }
+
+        // Check if user is authorized to update this delivery
+        if (delivery.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to update this delivery' });
+        }
+
+        // Check if delivery can be updated
+        if (['delivered', 'cancelled'].includes(delivery.status)) {
+            return res.status(400).json({ message: 'Delivery cannot be updated' });
+        }
+
+        updates.forEach(update => delivery[update] = req.body[update]);
+        await delivery.save();
+
+        res.json(delivery);
+    } catch (error) {
+        res.status(400).json({ message: 'Error updating delivery', error: error.message });
+    }
+};
+
+// Delete delivery
+const deleteDelivery = async (req, res) => {
+    try {
+        const delivery = await Delivery.findById(req.params.id);
+
+        if (!delivery) {
+            return res.status(404).json({ message: 'Delivery not found' });
+        }
+
+        // Check if user is authorized to delete this delivery
+        if (delivery.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to delete this delivery' });
+        }
+
+        // Check if delivery can be deleted
+        if (['delivered', 'cancelled'].includes(delivery.status)) {
+            return res.status(400).json({ message: 'Delivery cannot be deleted' });
+        }
+
+        await delivery.remove();
+        res.json({ message: 'Delivery deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting delivery', error: error.message });
+    }
+};
+
 // Update delivery status
 const updateDeliveryStatus = async (req, res) => {
     const { status } = req.body;
@@ -211,6 +273,8 @@ module.exports = {
     getAllDeliveries,
     getUserDeliveries,
     getDeliveryById,
+    updateDelivery,
+    deleteDelivery,
     updateDeliveryStatus,
     cancelDelivery
 }; 

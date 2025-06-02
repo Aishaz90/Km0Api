@@ -6,16 +6,40 @@ const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
 const { auth, isAdmin } = require('../Middleware/auth.middleware');
 const upload = require('../Middleware/upload.middleware');
-const port = 3000; 
+const port = 3000;
 
 // Import all controllers
 const { register, login, refreshToken, getProfile, updateProfile } = require('../Controller/auth.controller');
 const { getAllMenu, getMenuById, createMenu, updateMenu, deleteMenu } = require('../Controller/menu.controller');
-const { getAllPatisserie, getPatisserieById, createPatisserie, updatePatisserie, deletePatisserie } = require('../Controller/patisserie.controller');
+const {
+    getAllPatisserieItems: getAllPatisserie,
+    getPatisserieItemById: getPatisserieById,
+    createPatisserieItem: createPatisserie,
+    updatePatisserieItem: updatePatisserie,
+    deletePatisserieItem: deletePatisserie
+} = require('../Controller/patisserie.controller');
 const { getAllEvents, getEventById, createEvent, updateEvent, deleteEvent } = require('../Controller/event.controller');
-const { getAllReservations, getReservationById, createReservation, updateReservation, deleteReservation, getMyReservations } = require('../Controller/reservation.controller');
-const { getAllDeliveries, getDeliveryById, createDelivery, updateDelivery, deleteDelivery, getMyDeliveries, updateDeliveryStatus } = require('../Controller/delivery.controller');
-const { verifyReservation, getVerification } = require('../Controller/verification.controller');
+const {
+    getAllReservations,
+    getUserReservations: getMyReservations,
+    getReservationById,
+    createReservation,
+    updateReservation,
+    deleteReservation
+} = require('../Controller/reservation.controller');
+const {
+    getAllDeliveries,
+    getUserDeliveries: getMyDeliveries,
+    getDeliveryById,
+    createDelivery,
+    updateDelivery,
+    deleteDelivery,
+    updateDeliveryStatus
+} = require('../Controller/delivery.controller');
+const {
+    verifyReservation,
+    getVerificationPage: getVerification
+} = require('../Controller/verification.controller');
 
 // Create Express app
 const app = express();
@@ -99,6 +123,6 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
     res.status(404).json({ message: 'Not Found' });
 });
-app.listen(port, () => { 
-    console.log(`Serveur démarré sur le port ${port}`); 
+app.listen(port, () => {
+    console.log(`Serveur démarré sur le port ${port}`);
 }); 

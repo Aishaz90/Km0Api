@@ -1,7 +1,7 @@
 const Menu = require('../Model/menu.model');
 
 // Get all menu items
-exports.getAllMenu = async (req, res) => {
+const getAllMenu = async (req, res) => {
     try {
         const menuItems = await Menu.find({});
         res.json(menuItems);
@@ -11,7 +11,7 @@ exports.getAllMenu = async (req, res) => {
 };
 
 // Get menu item by ID
-exports.getMenuById = async (req, res) => {
+const getMenuById = async (req, res) => {
     try {
         const menuItem = await Menu.findById(req.params.id);
         if (!menuItem) {
@@ -24,7 +24,7 @@ exports.getMenuById = async (req, res) => {
 };
 
 // Create menu item
-exports.createMenu = async (req, res) => {
+const createMenu = async (req, res) => {
     try {
         const menuData = {
             ...req.body,
@@ -39,7 +39,7 @@ exports.createMenu = async (req, res) => {
 };
 
 // Update menu item
-exports.updateMenu = async (req, res) => {
+const updateMenu = async (req, res) => {
     try {
         const update = { ...req.body };
         if (req.file) {
@@ -56,7 +56,7 @@ exports.updateMenu = async (req, res) => {
 };
 
 // Delete menu item
-exports.deleteMenu = async (req, res) => {
+const deleteMenu = async (req, res) => {
     try {
         const menuItem = await Menu.findByIdAndDelete(req.params.id);
         if (!menuItem) {
