@@ -5,7 +5,7 @@ const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
 const { auth, isAdmin } = require('../Middleware/auth.middleware');
-const upload = require('../Middleware/upload.middleware');
+const multer = require('multer');
 
 // Create Express app
 const app = express();
@@ -36,6 +36,15 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Configure multer for memory storage (better for serverless)
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
+
 // DB connection middleware
 app.use(async (req, res, next) => {
     try {
@@ -47,7 +56,7 @@ app.use(async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Database connection error:', error);
-        res.status(500).json({ message: 'Database connection error', error: error.message });
+        res.status(500).json({ message: 'Database connection error' });
     }
 });
 
@@ -64,9 +73,10 @@ app.get('/menu', async (req, res) => {
         res.json(menuItems);
     } catch (error) {
         console.error('Error in test-menu route:', error);
-        res.status(500).json({ message: 'Error fetching menu items', error: error.message });
+        res.status(500).json({ message: 'Error fetching menu items' });
     }
 });
+
 app.get('/menu/:id', async (req, res) => {
     try {
         const Menu = require('../Model/menu.model');
@@ -76,62 +86,47 @@ app.get('/menu/:id', async (req, res) => {
         }
         res.json(menuItem);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching menu item', error: error.message });
+        res.status(500).json({ message: 'Error fetching menu item' });
     }
 });
+
 app.post('/menu', auth, isAdmin, upload.single('image'), async (req, res) => {
     try {
         const Menu = require('../Model/menu.model');
-        const menuItem = new Menu(req.body);
+
+        // Create menu item with base64 image if provided
+        const menuData = {
+            ...req.body,
+            image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : undefined
+        };
+
+        const menuItem = new Menu(menuData);
         await menuItem.save();
         res.status(201).json(menuItem);
     } catch (error) {
-        res.status(400).json({ message: 'Error creating menu item', error: error.message });
+        console.error('Error creating menu item:', error);
+        res.status(400).json({ message: 'Error creating menu item' });
     }
 });
-// Error and 404 handlers
+
+// Error handler
 app.use((err, req, res, next) => {
-    console.error('Error details:', {
-        name: err.name,
-        message: err.message,
-        stack: err.stack,
-        path: req.path,
-        method: req.method,
-        timestamp: new Date().toISOString()
-    });
-
-    if (err.name === 'MulterError') {
-        return res.status(400).json({ message: 'File upload error', error: err.message });
+    console.error('Error:', err);
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: 'File upload error' });
     }
-
-    if (err.name === 'ValidationError') {
-        return res.status(400).json({ message: 'Validation Error', error: err.message });
-    }
-
-    if (err.name === 'JsonWebTokenError') {
-        return res.status(401).json({ message: 'Invalid token', error: err.message });
-    }
-
-    res.status(500).json({ message: 'Something went wrong!', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    res.status(500).json({ message: 'Server error' });
 });
 
+// 404 handler
 app.use((req, res) => {
-    if (req.path === '/favicon.ico') {
-        res.status(204).end();
-        return;
-    }
-    console.log('404 Not Found:', {
-        path: req.path,
-        method: req.method,
-        availableRoutes: routes.map(r => r.path)
-    });
-    res.status(404).json({
-        message: 'Not Found',
-        path: req.path,
-        method: req.method,
-        timestamp: new Date().toISOString(),
-        availableRoutes: routes.map(r => r.path)
-    });
+    res.status(404).json({ message: 'Not Found' });
 });
-module.exports = app;
-module.exports.handler = serverless(app);
+
+// Create serverless handler
+const handler = serverless(app, {
+    basePath: '/api'
+});
+
+// Export for Vercel
+module.exports = { handler };
