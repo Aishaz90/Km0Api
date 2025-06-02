@@ -4,6 +4,8 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('../db');
 const mongoose = require('mongoose');
+const { auth, isAdmin } = require('../Middleware/auth.middleware');
+const upload = require('../Middleware/upload.middleware');
 
 // Create Express app
 const app = express();
@@ -75,6 +77,16 @@ app.get('/menu/:id', async (req, res) => {
         res.json(menuItem);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching menu item', error: error.message });
+    }
+});
+app.post('/menu', auth, isAdmin, upload.single('image'), async (req, res) => {
+    try {
+        const Menu = require('../Model/menu.model');
+        const menuItem = new Menu(req.body);
+        await menuItem.save();
+        res.status(201).json(menuItem);
+    } catch (error) {
+        res.status(400).json({ message: 'Error creating menu item', error: error.message });
     }
 });
 // Error and 404 handlers
