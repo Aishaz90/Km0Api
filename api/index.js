@@ -51,7 +51,6 @@ app.use(async (req, res, next) => {
 
 const routes = [
     { path: '/auth', file: '../Route/auth.routes.js' },
-    { path: '/menu', file: '../Route/menu.routes.js' },
     { path: '/reservations', file: '../Route/reservation.routes.js' },
     { path: '/events', file: '../Route/event.routes.js' },
     { path: '/patisserie', file: '../Route/patisserie.routes.js' },
@@ -86,7 +85,7 @@ app.get('/test-route', (req, res) => {
 });
 
 // Add a test menu route directly
-app.get('/test-menu', async (req, res) => {
+app.get('/menu', async (req, res) => {
     try {
         const Menu = require('../Model/menu.model');
         const menuItems = await Menu.find({});
