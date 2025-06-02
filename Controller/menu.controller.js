@@ -71,7 +71,8 @@ const createMenu = async (req, res) => {
 
         // Upload image to Imgur
         const formData = new FormData();
-        formData.append('image', req.file.buffer.toString('base64'));
+        const base64Image = req.file.buffer.toString('base64');
+        formData.append('image', base64Image);
         formData.append('type', 'base64');
 
         const response = await axios.post('https://api.imgur.com/3/image', formData, {
@@ -119,7 +120,8 @@ const updateMenu = async (req, res) => {
         if (req.file) {
             // Upload new image to Imgur
             const formData = new FormData();
-            formData.append('image', req.file.buffer.toString('base64'));
+            const base64Image = req.file.buffer.toString('base64');
+            formData.append('image', base64Image);
             formData.append('type', 'base64');
 
             const response = await axios.post('https://api.imgur.com/3/image', formData, {
