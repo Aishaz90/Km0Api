@@ -73,6 +73,7 @@ const createMenu = async (req, res) => {
             price: priceNum,
             category,
             image: `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+            isAvailable: true,
             ingredients: req.body.ingredients ? req.body.ingredients.split(',').map(i => i.trim()) : []
         };
 
