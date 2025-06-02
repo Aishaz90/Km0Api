@@ -68,13 +68,13 @@ const createMenu = async (req, res) => {
         }
 
         const menuData = {
-            name,
-            description,
+            name: name.trim(),
+            description: description.trim(),
             price: priceNum,
             category,
-            image: `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+            image: `/images/menu/${req.file.filename}`,
             isAvailable: true,
-            ingredients: req.body.ingredients ? req.body.ingredients.split(',').map(i => i.trim()) : []
+            ingredients: req.body.ingredients ? req.body.ingredients.split(',').map(i => i.trim()).filter(i => i) : []
         };
 
         const menuItem = new Menu(menuData);
@@ -98,7 +98,7 @@ const updateMenu = async (req, res) => {
     try {
         const update = { ...req.body };
         if (req.file) {
-            update.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+            update.image = `/images/menu/${req.file.filename}`;
         }
         const menuItem = await Menu.findByIdAndUpdate(req.params.id, update, { new: true });
         if (!menuItem) {
