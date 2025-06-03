@@ -5,7 +5,7 @@ const path = require('path');
 const serverless = require('serverless-http');
 const { connectDB, isConnected } = require('./db');
 const mongoose = require('mongoose');
-const { auth, isAdmin } = require('./Middleware/auth.middleware');
+const { auth, isAdmin, isVerifier } = require('./Middleware/auth.middleware');
 const upload = require('./Middleware/upload.middleware');
 const port = 5000;
 
@@ -109,8 +109,8 @@ app.put('/deliveries/:id/status', auth, isAdmin, updateDeliveryStatus);
 app.delete('/deliveries/:id', auth, deleteDelivery);
 
 // Verification routes
-app.get('/verification/:reservationId', getVerification);
-app.post('/verification/verify/:reservationId', auth, isAdmin, verifyReservation);
+app.get('/verification/:reservationId', auth, isVerifier, getVerification);
+app.post('/verification/verify/:reservationId', auth, isVerifier, verifyReservation);
 
 // Error handler
 app.use((err, req, res, next) => {

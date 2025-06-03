@@ -209,11 +209,27 @@ const getReservationById = async (req, res) => {
 // Update reservation
 const updateReservation = async (req, res) => {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['date', 'time', 'numberOfGuests', 'status', 'specialRequests'];
+    const allowedUpdates = [
+        'date',
+        'time',
+        'numberOfGuests',
+        'status',
+        'specialRequests',
+        'firstName',
+        'lastName',
+        'contactPhone',
+        'contactEmail',
+        'type',
+        'eventType'
+    ];
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
     if (!isValidOperation) {
-        return res.status(400).json({ message: 'Invalid updates' });
+        return res.status(400).json({
+            message: 'Invalid updates',
+            allowedFields: allowedUpdates,
+            attemptedUpdates: updates
+        });
     }
 
     try {

@@ -1,11 +1,11 @@
 const Reservation = require('../Model/reservation.model');
+const User = require('../Model/user.model');
 
 // Verify reservation by QR code
 const verifyReservation = async (req, res) => {
     try {
         const { reservationId } = req.params;
-        const reservation = await Reservation.findById(reservationId)
-            .populate('user', 'name email');
+        const reservation = await Reservation.findById(reservationId);
 
         if (!reservation) {
             return res.status(404).json({ message: 'Reservation not found' });
@@ -35,10 +35,9 @@ const verifyReservation = async (req, res) => {
                 type: reservation.type,
                 eventType: reservation.eventType,
                 numberOfGuests: reservation.numberOfGuests,
-                user: {
-                    name: reservation.user.name,
-                    email: reservation.user.email
-                }
+                firstName: reservation.firstName,
+                lastName: reservation.lastName,
+                contactEmail: reservation.contactEmail
             }
         });
     } catch (error) {
@@ -50,8 +49,7 @@ const verifyReservation = async (req, res) => {
 const getVerificationPage = async (req, res) => {
     try {
         const { reservationId } = req.params;
-        const reservation = await Reservation.findById(reservationId)
-            .populate('user', 'name email');
+        const reservation = await Reservation.findById(reservationId);
 
         if (!reservation) {
             return res.status(404).json({ message: 'Reservation not found' });
@@ -59,7 +57,9 @@ const getVerificationPage = async (req, res) => {
 
         // Check if user agent is mobile
         const userAgent = req.headers['user-agent'];
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        // Temporarily allow desktop access for testing
+        const isMobile = true; // Force true for testing
+        // const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
         if (!isMobile) {
             return res.status(403).json({ message: 'Access denied. Mobile devices only.' });
@@ -75,10 +75,9 @@ const getVerificationPage = async (req, res) => {
                 numberOfGuests: reservation.numberOfGuests,
                 status: reservation.status,
                 isVerified: reservation.isVerified,
-                user: {
-                    name: reservation.user.name,
-                    email: reservation.user.email
-                }
+                firstName: reservation.firstName,
+                lastName: reservation.lastName,
+                contactEmail: reservation.contactEmail
             }
         });
     } catch (error) {
