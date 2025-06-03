@@ -22,7 +22,14 @@ transporter.verify(function (error, success) {
         console.error('Email configuration error:', {
             message: error.message,
             code: error.code,
-            command: error.command
+            command: error.command,
+            env: {
+                host: process.env.MAIL_HOST,
+                port: process.env.MAIL_PORT,
+                username: process.env.MAIL_USERNAME,
+                hasPassword: !!process.env.MAIL_PASSWORD,
+                encryption: process.env.MAIL_ENCRYPTION
+            }
         });
     } else {
         console.log('Email server is ready to send messages');
@@ -43,6 +50,15 @@ const generateQRCode = async (reservationId) => {
 const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
         console.log('Starting email sending process...');
+        console.log('Environment variables check:', {
+            MAIL_HOST: process.env.MAIL_HOST,
+            MAIL_PORT: process.env.MAIL_PORT,
+            MAIL_USERNAME: process.env.MAIL_USERNAME,
+            MAIL_PASSWORD: process.env.MAIL_PASSWORD ? 'Password is set' : 'Password is missing',
+            MAIL_ENCRYPTION: process.env.MAIL_ENCRYPTION,
+            MAIL_FROM_ADDRESS: process.env.MAIL_FROM_ADDRESS,
+            MAIL_FROM_NAME: process.env.MAIL_FROM_NAME
+        });
 
         if (!process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
             console.error('Email configuration missing:', {
@@ -87,7 +103,12 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
             `
         };
 
-        console.log('Attempting to send email...');
+        console.log('Attempting to send email with options:', {
+            from: mailOptions.from,
+            to: mailOptions.to,
+            subject: mailOptions.subject
+        });
+
         const info = await transporter.sendMail(mailOptions);
         console.log('Email sent successfully:', info.response);
         return true;
@@ -96,7 +117,14 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
             message: error.message,
             stack: error.stack,
             code: error.code,
-            command: error.command
+            command: error.command,
+            env: {
+                host: process.env.MAIL_HOST,
+                port: process.env.MAIL_PORT,
+                username: process.env.MAIL_USERNAME,
+                hasPassword: !!process.env.MAIL_PASSWORD,
+                encryption: process.env.MAIL_ENCRYPTION
+            }
         });
         return false;
     }
