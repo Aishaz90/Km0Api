@@ -11,6 +11,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// Verify transporter configuration
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error('Email configuration error:', error);
+    } else {
+        console.log('Email server is ready to send messages');
+    }
+});
+
 // Generate QR code
 const generateQRCode = async (reservationId) => {
     try {
@@ -24,8 +33,20 @@ const generateQRCode = async (reservationId) => {
 // Send confirmation email with QR code
 const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
+        console.log('Starting email sending process...');
+        console.log('Email configuration:', {
+            user: process.env.EMAIL_USER,
+            // Don't log the actual password
+            hasPassword: !!process.env.EMAIL_PASS
+        });
+
         // Ensure we have the user data populated
         const populatedReservation = await Reservation.findById(reservation._id).populate('user', 'name email');
+        console.log('Reservation data for email:', {
+            id: populatedReservation._id,
+            email: populatedReservation.contactEmail,
+            name: `${populatedReservation.firstName} ${populatedReservation.lastName}`
+        });
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
@@ -52,15 +73,18 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
             `
         };
 
-        await transporter.sendMail(mailOptions);
-        console.log('Confirmation email sent successfully to:', populatedReservation.contactEmail);
+        console.log('Attempting to send email...');
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', info.response);
+        return true;
     } catch (error) {
-        console.error('Error sending confirmation email:', error);
-        // Don't throw the error, just log it so the reservation can still be created
-        // But we'll return false to indicate the email wasn't sent
+        console.error('Detailed email sending error:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code
+        });
         return false;
     }
-    return true;
 };
 
 // Create reservation
@@ -90,18 +114,22 @@ const createReservation = async (req, res) => {
         });
 
         await reservation.save();
+        console.log('Reservation saved successfully:', reservation._id);
 
         // Generate QR code
         const qrCodeDataUrl = await generateQRCode(reservation._id.toString());
         reservation.qrCode = qrCodeDataUrl;
         await reservation.save();
+        console.log('QR code generated and saved');
 
         // Send confirmation email
         const emailSent = await sendConfirmationEmail(reservation, qrCodeDataUrl);
+        console.log('Email sending result:', emailSent);
 
         res.status(201).json({
             ...reservation.toObject(),
-            emailSent
+            emailSent,
+            message: emailSent ? 'Reservation created and confirmation email sent' : 'Reservation created but email could not be sent'
         });
     } catch (error) {
         console.error('Reservation creation error:', error);
