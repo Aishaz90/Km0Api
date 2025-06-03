@@ -4,17 +4,26 @@ const Reservation = require('../Model/reservation.model');
 
 // Create email transporter
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
 // Verify transporter configuration
 transporter.verify(function (error, success) {
     if (error) {
-        console.error('Email configuration error:', error);
+        console.error('Email configuration error:', {
+            message: error.message,
+            code: error.code,
+            command: error.command
+        });
     } else {
         console.log('Email server is ready to send messages');
     }
@@ -34,22 +43,27 @@ const generateQRCode = async (reservationId) => {
 const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
         console.log('Starting email sending process...');
-        console.log('Email configuration:', {
-            user: process.env.EMAIL_USER,
-            // Don't log the actual password
-            hasPassword: !!process.env.EMAIL_PASS
-        });
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.error('Email configuration missing:', {
+                hasEmailUser: !!process.env.EMAIL_USER,
+                hasEmailPass: !!process.env.EMAIL_PASS
+            });
+            return false;
+        }
 
         // Ensure we have the user data populated
         const populatedReservation = await Reservation.findById(reservation._id).populate('user', 'name email');
-        console.log('Reservation data for email:', {
-            id: populatedReservation._id,
-            email: populatedReservation.contactEmail,
-            name: `${populatedReservation.firstName} ${populatedReservation.lastName}`
-        });
+
+        if (!populatedReservation.contactEmail) {
+            console.error('No contact email found for reservation:', reservation._id);
+            return false;
+        }
+
+        console.log('Sending email to:', populatedReservation.contactEmail);
 
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: `"KM0 Restaurant" <${process.env.EMAIL_USER}>`,
             to: populatedReservation.contactEmail,
             subject: 'Reservation Confirmation - KM0 Restaurant',
             html: `
@@ -81,7 +95,8 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
         console.error('Detailed email sending error:', {
             message: error.message,
             stack: error.stack,
-            code: error.code
+            code: error.code,
+            command: error.command
         });
         return false;
     }
