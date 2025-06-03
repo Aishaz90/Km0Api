@@ -6,6 +6,16 @@ const reservationSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    firstName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    lastName: {
+        type: String,
+        required: true,
+        trim: true
+    },
     type: {
         type: String,
         required: true,
@@ -15,7 +25,7 @@ const reservationSchema = new mongoose.Schema({
         type: String,
         enum: ['birthday', 'wedding', 'corporate', 'other'],
         required: function () {
-            return this.type === 'event';   
+            return this.type === 'event';
         }
     },
     date: {
