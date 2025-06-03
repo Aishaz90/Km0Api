@@ -55,7 +55,7 @@ const getVerificationPage = async (req, res) => {
             return res.status(404).json({ message: 'Reservation not found' });
         }
 
-        // Check if user agent is mobile
+        // Check if user agent is mobile    
         const userAgent = req.headers['user-agent'];
         // Temporarily allow desktop access for testing
         const isMobile = true; // Force true for testing
