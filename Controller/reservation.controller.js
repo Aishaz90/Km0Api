@@ -8,7 +8,11 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.MAIL_USERNAME,
         pass: process.env.MAIL_PASSWORD
-    }
+    },
+    tls: {
+        rejectUnauthorized: false
+    },
+    secure: true
 });
 
 // Verify transporter configuration
@@ -42,6 +46,10 @@ const generateQRCode = async (reservationId) => {
 const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
         console.log('Starting email sending process...');
+        console.log('Environment variables check:', {
+            MAIL_USERNAME: process.env.MAIL_USERNAME,
+            hasPassword: !!process.env.MAIL_PASSWORD
+        });
 
         if (!process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
             console.error('Email configuration missing:', {
@@ -53,6 +61,11 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
 
         // Ensure we have the user data populated
         const populatedReservation = await Reservation.findById(reservation._id).populate('user', 'name email');
+        console.log('Populated reservation:', {
+            id: populatedReservation._id,
+            contactEmail: populatedReservation.contactEmail,
+            user: populatedReservation.user
+        });
 
         if (!populatedReservation.contactEmail) {
             console.error('No contact email found for reservation:', reservation._id);
@@ -100,7 +113,11 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
             message: error.message,
             stack: error.stack,
             code: error.code,
-            command: error.command
+            command: error.command,
+            env: {
+                username: process.env.MAIL_USERNAME,
+                hasPassword: !!process.env.MAIL_PASSWORD
+            }
         });
         return false;
     }
