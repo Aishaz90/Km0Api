@@ -23,32 +23,44 @@ const generateQRCode = async (reservationId) => {
 
 // Send confirmation email with QR code
 const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: reservation.contactEmail,
-        subject: 'Reservation Confirmation',
-        html: `
-      <h1>Reservation Confirmation</h1>
-      <p>Dear ${reservation.user.name},</p>
-      <p>Your reservation has been confirmed:</p>
-      <ul>
-        <li>Type: ${reservation.type}</li>
-        ${reservation.type === 'event' ? `<li>Event Type: ${reservation.eventType}</li>` : ''}
-        <li>Date: ${new Date(reservation.date).toLocaleDateString()}</li>
-        <li>Time: ${reservation.time}</li>
-        <li>Number of Guests: ${reservation.numberOfGuests}</li>
-      </ul>
-      <p>Please present this QR code upon arrival:</p>
-      <img src="${qrCodeDataUrl}" alt="Reservation QR Code" />
-      <p>Thank you for choosing KM0 restaurant cafe!</p>
-    `
-    };
-
     try {
+        // Ensure we have the user data populated
+        const populatedReservation = await Reservation.findById(reservation._id).populate('user', 'name email');
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: populatedReservation.contactEmail,
+            subject: 'Reservation Confirmation - KM0 Restaurant',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h1 style="color: #333;">Reservation Confirmation</h1>
+                    <p>Dear ${populatedReservation.firstName} ${populatedReservation.lastName},</p>
+                    <p>Your reservation has been confirmed:</p>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin: 10px 0;"><strong>Type:</strong> ${populatedReservation.type}</li>
+                        ${populatedReservation.type === 'event' ? `<li style="margin: 10px 0;"><strong>Event Type:</strong> ${populatedReservation.eventType}</li>` : ''}
+                        <li style="margin: 10px 0;"><strong>Date:</strong> ${new Date(populatedReservation.date).toLocaleDateString()}</li>
+                        <li style="margin: 10px 0;"><strong>Time:</strong> ${populatedReservation.time}</li>
+                        <li style="margin: 10px 0;"><strong>Number of Guests:</strong> ${populatedReservation.numberOfGuests}</li>
+                    </ul>
+                    <p>Please present this QR code upon arrival:</p>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <img src="${qrCodeDataUrl}" alt="Reservation QR Code" style="max-width: 200px;"/>
+                    </div>
+                    <p>Thank you for choosing KM0 restaurant cafe!</p>
+                </div>
+            `
+        };
+
         await transporter.sendMail(mailOptions);
+        console.log('Confirmation email sent successfully to:', populatedReservation.contactEmail);
     } catch (error) {
-        throw new Error('Error sending confirmation email');
+        console.error('Error sending confirmation email:', error);
+        // Don't throw the error, just log it so the reservation can still be created
+        // But we'll return false to indicate the email wasn't sent
+        return false;
     }
+    return true;
 };
 
 // Create reservation
@@ -85,9 +97,12 @@ const createReservation = async (req, res) => {
         await reservation.save();
 
         // Send confirmation email
-        await sendConfirmationEmail(reservation, qrCodeDataUrl);
+        const emailSent = await sendConfirmationEmail(reservation, qrCodeDataUrl);
 
-        res.status(201).json(reservation);
+        res.status(201).json({
+            ...reservation.toObject(),
+            emailSent
+        });
     } catch (error) {
         console.error('Reservation creation error:', error);
         res.status(400).json({
