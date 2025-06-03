@@ -66,6 +66,14 @@ const reservationSchema = new mongoose.Schema({
     },
     verificationTime: {
         type: Date
+    },
+    emailSent: {
+        type: Boolean,
+        default: false
+    },
+    message: {
+        type: String,
+        default: 'Reservation created'
     }
 }, {
     timestamps: true

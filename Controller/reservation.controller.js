@@ -129,7 +129,9 @@ const createReservation = async (req, res) => {
 
         const reservation = new Reservation({
             ...req.body,
-            user: req.user._id
+            user: req.user._id,
+            emailSent: false,
+            message: 'Reservation created'
         });
 
         await reservation.save();
@@ -145,11 +147,12 @@ const createReservation = async (req, res) => {
         const emailSent = await sendConfirmationEmail(reservation, qrCodeDataUrl);
         console.log('Email sending result:', emailSent);
 
-        res.status(201).json({
-            ...reservation.toObject(),
-            emailSent,
-            message: emailSent ? 'Reservation created and confirmation email sent' : 'Reservation created but email could not be sent'
-        });
+        // Update reservation with email status
+        reservation.emailSent = emailSent;
+        reservation.message = emailSent ? 'Reservation created and confirmation email sent' : 'Reservation created but email could not be sent';
+        await reservation.save();
+
+        res.status(201).json(reservation);
     } catch (error) {
         console.error('Reservation creation error:', error);
         res.status(400).json({
