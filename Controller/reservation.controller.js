@@ -54,6 +54,24 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
 // Create reservation
 const createReservation = async (req, res) => {
     try {
+        // Validate required fields
+        const requiredFields = ['firstName', 'lastName', 'type', 'date', 'time', 'numberOfGuests', 'contactPhone', 'contactEmail'];
+        const missingFields = requiredFields.filter(field => !req.body[field]);
+
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                message: 'Missing required fields',
+                missingFields
+            });
+        }
+
+        // If type is event, validate eventType
+        if (req.body.type === 'event' && !req.body.eventType) {
+            return res.status(400).json({
+                message: 'Event type is required for event reservations'
+            });
+        }
+
         const reservation = new Reservation({
             ...req.body,
             user: req.user._id
@@ -71,7 +89,11 @@ const createReservation = async (req, res) => {
 
         res.status(201).json(reservation);
     } catch (error) {
-        res.status(400).json({ message: 'Error creating reservation', error: error.message });
+        console.error('Reservation creation error:', error);
+        res.status(400).json({
+            message: 'Error creating reservation',
+            error: error.message
+        });
     }
 };
 
