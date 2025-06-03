@@ -184,7 +184,7 @@ const deleteReservation = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this reservation' });
         }
 
-        await reservation.remove();
+        await Reservation.findByIdAndDelete(req.params.id);
         res.json({ message: 'Reservation deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting reservation', error: error.message });
