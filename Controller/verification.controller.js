@@ -57,9 +57,7 @@ const getVerificationPage = async (req, res) => {
 
         // Check if user agent is mobile    
         const userAgent = req.headers['user-agent'];
-        // Temporarily allow desktop access for testing
-        const isMobile = true; // Force true for testing
-        // const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
         if (!isMobile) {
             return res.status(403).json({ message: 'Access denied. Mobile devices only.' });
