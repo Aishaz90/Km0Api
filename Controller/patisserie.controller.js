@@ -5,92 +5,28 @@ const FormData = require('form-data');
 // Create patisserie item
 const createPatisserieItem = async (req, res) => {
     try {
-        // Validate required fields
-        const { name, description, price, categorie } = req.body;
+        const { name, imageH, image, categorie, quantity, price } = req.body;
 
-        if (!name || !description || !price || !categorie) {
-            return res.status(400).json({
-                message: 'Missing required fields',
-                details: {
-                    name: !name ? 'Name is required' : null,
-                    description: !description ? 'Description is required' : null,
-                    price: !price ? 'Price is required' : null,
-                    categorie: !categorie ? 'Category is required' : null
-                }
-            });
-        }
-
-        // Validate price
-        const priceNum = Number(price);
-        if (isNaN(priceNum) || priceNum < 0) {
-            return res.status(400).json({
-                message: 'Invalid price',
-                details: 'Price must be a positive number'
-            });
-        }
-
-        // Validate image
-        if (!req.file) {
-            return res.status(400).json({
-                message: 'Image is required',
-                details: 'Please upload an image file'
-            });
-        }
-
-        // Upload image to Imgur
-        const formData = new FormData();
-        formData.append('image', req.file.buffer.toString('base64'));
-        formData.append('type', 'base64');
-
-        const response = await axios.post('https://api.imgur.com/3/image', formData, {
-            headers: {
-                'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
-                ...formData.getHeaders()
-            }
-        });
-
-        if (!response.data || !response.data.data || !response.data.data.link) {
-            throw new Error('Failed to upload image to Imgur');
-        }
-
-        const patisserieData = {
-            name: name.trim(),
-            description: description.trim(),
-            price: priceNum,
+        const patisserieItem = new Patisserie({
+            name,
+            imageH,
+            image,
             categorie,
-            image: response.data.data.link,
-            imageH: response.data.data.link,
-            isAvailable: true,
-            quantity: req.body.quantity || 0
-        };
+            quantity,
+            price
+        });
 
-        const patisserieItem = new Patisserie(patisserieData);
         await patisserieItem.save();
-
-        res.status(201).json({
-            message: 'Patisserie item created successfully',
-            patisserieItem
-        });
+        res.status(201).json(patisserieItem);
     } catch (error) {
-        console.error('Create patisserie error:', error);
-        res.status(400).json({
-            message: 'Error creating patisserie item',
-            details: error.message
-        });
+        res.status(400).json({ message: 'Error creating patisserie item', error: error.message });
     }
 };
 
 // Get all patisserie items
 const getAllPatisserieItems = async (req, res) => {
     try {
-        const { categorie } = req.query;
-        const query = {};
-
-        if (categorie) {
-            query.categorie = categorie;
-        }
-
-        const patisserieItems = await Patisserie.find(query);
+        const patisserieItems = await Patisserie.find();
         res.json(patisserieItems);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching patisserie items', error: error.message });
@@ -113,60 +49,44 @@ const getPatisserieItemById = async (req, res) => {
 // Update patisserie item
 const updatePatisserieItem = async (req, res) => {
     try {
-        const update = { ...req.body };
+        const { name, imageH, image, categorie, quantity, price } = req.body;
+        const patisserieItem = await Patisserie.findById(req.params.id);
 
-        if (req.file) {
-            // Upload new image to Imgur
-            const formData = new FormData();
-            formData.append('image', req.file.buffer.toString('base64'));
-            formData.append('type', 'base64');
-
-            const response = await axios.post('https://api.imgur.com/3/image', formData, {
-                headers: {
-                    'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
-                    ...formData.getHeaders()
-                }
-            });
-
-            if (!response.data || !response.data.data || !response.data.data.link) {
-                throw new Error('Failed to upload image to Imgur');
-            }
-            update.image = response.data.data.link;
-            update.imageH = response.data.data.link;
-        }
-
-        const patisserieItem = await Patisserie.findByIdAndUpdate(req.params.id, update, { new: true });
         if (!patisserieItem) {
             return res.status(404).json({ message: 'Patisserie item not found' });
         }
+
+        patisserieItem.name = name || patisserieItem.name;
+        patisserieItem.imageH = imageH || patisserieItem.imageH;
+        patisserieItem.image = image || patisserieItem.image;
+        patisserieItem.categorie = categorie || patisserieItem.categorie;
+        patisserieItem.quantity = quantity || patisserieItem.quantity;
+        patisserieItem.price = price || patisserieItem.price;
+
+        await patisserieItem.save();
         res.json(patisserieItem);
     } catch (error) {
-        res.status(400).json({ message: 'Error updating patisserie item' });
+        res.status(400).json({ message: 'Error updating patisserie item', error: error.message });
     }
 };
 
 // Delete patisserie item
 const deletePatisserieItem = async (req, res) => {
     try {
-        const patisserieItem = await Patisserie.findById(req.params.id);
+        const patisserieItem = await Patisserie.findByIdAndDelete(req.params.id);
         if (!patisserieItem) {
             return res.status(404).json({ message: 'Patisserie item not found' });
         }
-
-        // Note: Imgur doesn't provide a way to delete images via their API
-        // The image will remain on Imgur's servers
-
-        await Patisserie.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Patisserie item deleted' });
+        res.json({ message: 'Patisserie item deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting patisserie item' });
+        res.status(500).json({ message: 'Error deleting patisserie item', error: error.message });
     }
 };
 
 module.exports = {
-    createPatisserieItem,
     getAllPatisserieItems,
     getPatisserieItemById,
+    createPatisserieItem,
     updatePatisserieItem,
     deletePatisserieItem
 }; 
