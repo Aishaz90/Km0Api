@@ -15,7 +15,7 @@ const reservationSchema = new mongoose.Schema({
         type: String,
         enum: ['birthday', 'wedding', 'corporate', 'other'],
         required: function () {
-            return this.type === 'event';
+            return this.type === 'event';   
         }
     },
     date: {

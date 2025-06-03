@@ -40,7 +40,7 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
       </ul>
       <p>Please present this QR code upon arrival:</p>
       <img src="${qrCodeDataUrl}" alt="Reservation QR Code" />
-      <p>Thank you for choosing our service!</p>
+      <p>Thank you for choosing KM0 restaurant cafe!</p>
     `
     };
 
