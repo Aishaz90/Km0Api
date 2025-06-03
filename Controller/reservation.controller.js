@@ -4,12 +4,12 @@ const Reservation = require('../Model/reservation.model');
 
 // Create email transporter
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // true for 465, false for other ports
+    host: process.env.MAIL_HOST || 'smtp.gmail.com',
+    port: process.env.MAIL_PORT || 587,
+    secure: process.env.MAIL_ENCRYPTION === 'ssl',
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.MAIL_USERNAME,
+        pass: process.env.MAIL_PASSWORD
     },
     tls: {
         rejectUnauthorized: false
@@ -44,10 +44,10 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
         console.log('Starting email sending process...');
 
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        if (!process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
             console.error('Email configuration missing:', {
-                hasEmailUser: !!process.env.EMAIL_USER,
-                hasEmailPass: !!process.env.EMAIL_PASS
+                hasMailUsername: !!process.env.MAIL_USERNAME,
+                hasMailPassword: !!process.env.MAIL_PASSWORD
             });
             return false;
         }
@@ -63,7 +63,7 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
         console.log('Sending email to:', populatedReservation.contactEmail);
 
         const mailOptions = {
-            from: `"KM0 Restaurant" <${process.env.EMAIL_USER}>`,
+            from: `"${process.env.MAIL_FROM_NAME || 'KM0 Restaurant'}" <${process.env.MAIL_FROM_ADDRESS || process.env.MAIL_USERNAME}>`,
             to: populatedReservation.contactEmail,
             subject: 'Reservation Confirmation - KM0 Restaurant',
             html: `
