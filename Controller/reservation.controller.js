@@ -1,18 +1,16 @@
 const QRCode = require('qrcode');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const Reservation = require('../Model/reservation.model');
+const User = require('../Model/user.model');
 
-// Initialize Resend with error handling
-let resend;
-try {
-    if (!process.env.RESEND_API_KEY) {
-        console.warn('RESEND_API_KEY is not set in environment variables');
-    } else {
-        resend = new Resend(process.env.RESEND_API_KEY);
+// Create email transporter
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.MAIL_USERNAME,
+        pass: process.env.MAIL_PASSWORD
     }
-} catch (error) {
-    console.error('Error initializing Resend:', error);
-}
+});
 
 // Generate QR code
 const generateQRCode = async (reservationId) => {
@@ -29,41 +27,37 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
         console.log('Starting email sending process...');
 
-        if (!resend) {
-            console.error('Resend client not initialized. Please set RESEND_API_KEY in environment variables.');
+        if (!process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
+            console.error('Email configuration missing:', {
+                hasMailUsername: !!process.env.MAIL_USERNAME,
+                hasMailPassword: !!process.env.MAIL_PASSWORD
+            });
             return false;
         }
 
-        // Ensure we have the user data populated
-        const populatedReservation = await Reservation.findById(reservation._id).populate('user', 'name email');
-        console.log('Populated reservation:', {
-            id: populatedReservation._id,
-            contactEmail: populatedReservation.contactEmail,
-            user: populatedReservation.user
-        });
-
-        if (!populatedReservation.contactEmail) {
+        // Use contactEmail directly from reservation instead of populating user
+        if (!reservation.contactEmail) {
             console.error('No contact email found for reservation:', reservation._id);
             return false;
         }
 
-        console.log('Sending email to:', populatedReservation.contactEmail);
+        console.log('Sending email to:', reservation.contactEmail);
 
-        const { data, error } = await resend.emails.send({
-            from: 'KM0 Restaurant <onboarding@resend.dev>',
-            to: populatedReservation.contactEmail,
+        const mailOptions = {
+            from: process.env.MAIL_USERNAME,
+            to: reservation.contactEmail,
             subject: 'Reservation Confirmation - KM0 Restaurant',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h1 style="color: #333;">Reservation Confirmation</h1>
-                    <p>Dear ${populatedReservation.firstName} ${populatedReservation.lastName},</p>
+                    <p>Dear ${reservation.firstName} ${reservation.lastName},</p>
                     <p>Your reservation has been confirmed:</p>
                     <ul style="list-style: none; padding: 0;">
-                        <li style="margin: 10px 0;"><strong>Type:</strong> ${populatedReservation.type}</li>
-                        ${populatedReservation.type === 'event' ? `<li style="margin: 10px 0;"><strong>Event Type:</strong> ${populatedReservation.eventType}</li>` : ''}
-                        <li style="margin: 10px 0;"><strong>Date:</strong> ${new Date(populatedReservation.date).toLocaleDateString()}</li>
-                        <li style="margin: 10px 0;"><strong>Time:</strong> ${populatedReservation.time}</li>
-                        <li style="margin: 10px 0;"><strong>Number of Guests:</strong> ${populatedReservation.numberOfGuests}</li>
+                        <li style="margin: 10px 0;"><strong>Type:</strong> ${reservation.type}</li>
+                        ${reservation.type === 'event' ? `<li style="margin: 10px 0;"><strong>Event Type:</strong> ${reservation.eventType}</li>` : ''}
+                        <li style="margin: 10px 0;"><strong>Date:</strong> ${new Date(reservation.date).toLocaleDateString()}</li>
+                        <li style="margin: 10px 0;"><strong>Time:</strong> ${reservation.time}</li>
+                        <li style="margin: 10px 0;"><strong>Number of Guests:</strong> ${reservation.numberOfGuests}</li>
                     </ul>
                     <p>Please present this QR code upon arrival:</p>
                     <div style="text-align: center; margin: 20px 0;">
@@ -72,19 +66,23 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
                     <p>Thank you for choosing KM0 restaurant cafe!</p>
                 </div>
             `
+        };
+
+        console.log('Attempting to send email with options:', {
+            from: mailOptions.from,
+            to: mailOptions.to,
+            subject: mailOptions.subject
         });
 
-        if (error) {
-            console.error('Error sending email:', error);
-            return false;
-        }
-
-        console.log('Email sent successfully:', data);
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', info.response);
         return true;
     } catch (error) {
         console.error('Detailed email sending error:', {
             message: error.message,
-            stack: error.stack
+            stack: error.stack,
+            code: error.code,
+            command: error.command
         });
         return false;
     }
