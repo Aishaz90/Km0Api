@@ -60,12 +60,18 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
                         <li style="margin: 10px 0;"><strong>Number of Guests:</strong> ${reservation.numberOfGuests}</li>
                     </ul>
                     <p>Please present this QR code upon arrival:</p>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <img src="${qrCodeDataUrl}" alt="Reservation QR Code" style="max-width: 200px;"/>
+                    <div style="text-align: center; margin: 20px 0; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+                        <img src="cid:qrCode" alt="Reservation QR Code" style="max-width: 200px; height: auto;"/>
                     </div>
                     <p>Thank you for choosing KM0 restaurant cafe!</p>
                 </div>
-            `
+            `,
+            attachments: [{
+                filename: 'qr-code.png',
+                content: qrCodeDataUrl.split(';base64,').pop(),
+                encoding: 'base64',
+                cid: 'qrCode'
+            }]
         };
 
         console.log('Attempting to send email with options:', {
