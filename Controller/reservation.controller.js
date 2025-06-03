@@ -44,7 +44,7 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
         console.log('Sending email to:', reservation.contactEmail);
 
         const mailOptions = {
-            from: process.env.MAIL_USERNAME,
+            from: process.env.MAIL_FROM_NAME,
             to: reservation.contactEmail,
             subject: 'Reservation Confirmation - KM0 Restaurant',
             html: `
