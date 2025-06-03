@@ -4,15 +4,15 @@ const Reservation = require('../Model/reservation.model');
 
 // Create email transporter
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.MAIL_USERNAME,
         pass: process.env.MAIL_PASSWORD
     },
-    tls: {
-        rejectUnauthorized: false
-    },
-    secure: true
+    debug: true, // Enable debug output
+    logger: true // Enable logger
 });
 
 // Verify transporter configuration
@@ -75,7 +75,7 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
         console.log('Sending email to:', populatedReservation.contactEmail);
 
         const mailOptions = {
-            from: process.env.MAIL_USERNAME,
+            from: `"KM0 Restaurant" <${process.env.MAIL_USERNAME}>`,
             to: populatedReservation.contactEmail,
             subject: 'Reservation Confirmation - KM0 Restaurant',
             html: `
@@ -105,9 +105,20 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
             subject: mailOptions.subject
         });
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully:', info.response);
-        return true;
+        try {
+            const info = await transporter.sendMail(mailOptions);
+            console.log('Email sent successfully:', info.response);
+            return true;
+        } catch (sendError) {
+            console.error('Error during email sending:', {
+                error: sendError,
+                message: sendError.message,
+                code: sendError.code,
+                command: sendError.command,
+                stack: sendError.stack
+            });
+            return false;
+        }
     } catch (error) {
         console.error('Detailed email sending error:', {
             message: error.message,
