@@ -63,7 +63,7 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
                     <div style="text-align: center; margin: 20px 0; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
                         <img src="cid:qrCode" alt="Reservation QR Code" style="max-width: 200px; height: auto;"/>
                     </div>
-                    <p>Thank you for choosing KM0 restaurant cafe!</p>
+                    <p>Thank you for choosing KM0 restaurant cafee !</p>
                 </div>
             `,
             attachments: [{
