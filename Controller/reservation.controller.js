@@ -1,36 +1,18 @@
 const QRCode = require('qrcode');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const Reservation = require('../Model/reservation.model');
 
-// Create email transporter
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.MAIL_USERNAME,
-        pass: process.env.MAIL_PASSWORD
-    },
-    debug: true, // Enable debug output
-    logger: true // Enable logger
-});
-
-// Verify transporter configuration
-transporter.verify(function (error, success) {
-    if (error) {
-        console.error('Email configuration error:', {
-            message: error.message,
-            code: error.code,
-            command: error.command,
-            env: {
-                username: process.env.MAIL_USERNAME,
-                hasPassword: !!process.env.MAIL_PASSWORD
-            }
-        });
+// Initialize Resend with error handling
+let resend;
+try {
+    if (!process.env.RESEND_API_KEY) {
+        console.warn('RESEND_API_KEY is not set in environment variables');
     } else {
-        console.log('Email server is ready to send messages');
+        resend = new Resend(process.env.RESEND_API_KEY);
     }
-});
+} catch (error) {
+    console.error('Error initializing Resend:', error);
+}
 
 // Generate QR code
 const generateQRCode = async (reservationId) => {
@@ -46,16 +28,9 @@ const generateQRCode = async (reservationId) => {
 const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
     try {
         console.log('Starting email sending process...');
-        console.log('Environment variables check:', {
-            MAIL_USERNAME: process.env.MAIL_USERNAME,
-            hasPassword: !!process.env.MAIL_PASSWORD
-        });
 
-        if (!process.env.MAIL_USERNAME || !process.env.MAIL_PASSWORD) {
-            console.error('Email configuration missing:', {
-                hasMailUsername: !!process.env.MAIL_USERNAME,
-                hasMailPassword: !!process.env.MAIL_PASSWORD
-            });
+        if (!resend) {
+            console.error('Resend client not initialized. Please set RESEND_API_KEY in environment variables.');
             return false;
         }
 
@@ -74,8 +49,8 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
 
         console.log('Sending email to:', populatedReservation.contactEmail);
 
-        const mailOptions = {
-            from: `"KM0 Restaurant" <${process.env.MAIL_USERNAME}>`,
+        const { data, error } = await resend.emails.send({
+            from: 'KM0 Restaurant <onboarding@resend.dev>',
             to: populatedReservation.contactEmail,
             subject: 'Reservation Confirmation - KM0 Restaurant',
             html: `
@@ -97,38 +72,19 @@ const sendConfirmationEmail = async (reservation, qrCodeDataUrl) => {
                     <p>Thank you for choosing KM0 restaurant cafe!</p>
                 </div>
             `
-        };
-
-        console.log('Attempting to send email with options:', {
-            from: mailOptions.from,
-            to: mailOptions.to,
-            subject: mailOptions.subject
         });
 
-        try {
-            const info = await transporter.sendMail(mailOptions);
-            console.log('Email sent successfully:', info.response);
-            return true;
-        } catch (sendError) {
-            console.error('Error during email sending:', {
-                error: sendError,
-                message: sendError.message,
-                code: sendError.code,
-                command: sendError.command,
-                stack: sendError.stack
-            });
+        if (error) {
+            console.error('Error sending email:', error);
             return false;
         }
+
+        console.log('Email sent successfully:', data);
+        return true;
     } catch (error) {
         console.error('Detailed email sending error:', {
             message: error.message,
-            stack: error.stack,
-            code: error.code,
-            command: error.command,
-            env: {
-                username: process.env.MAIL_USERNAME,
-                hasPassword: !!process.env.MAIL_PASSWORD
-            }
+            stack: error.stack
         });
         return false;
     }
