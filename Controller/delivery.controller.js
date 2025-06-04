@@ -45,19 +45,85 @@ const sendDeliveryConfirmationEmail = async (delivery) => {
 // Create delivery
 const createDelivery = async (req, res) => {
     try {
+        // Validate required fields
+        const requiredFields = [
+            'items',
+            'deliveryAddress',
+            'deliveryDate',
+            'deliveryTime',
+            'totalAmount',
+            'deliveryFee',
+            'contactPhone',
+            'paymentMethod'
+        ];
+
+        const missingFields = requiredFields.filter(field => !req.body[field]);
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                message: 'Missing required fields',
+                missingFields
+            });
+        }
+
+        // Validate items array
+        if (!Array.isArray(req.body.items) || req.body.items.length === 0) {
+            return res.status(400).json({
+                message: 'Items must be a non-empty array'
+            });
+        }
+
+        // Validate each item
+        for (const item of req.body.items) {
+            if (!item.patisserie || !item.quantity) {
+                return res.status(400).json({
+                    message: 'Each item must have patisserie and quantity'
+                });
+            }
+        }
+
+        // Validate delivery address
+        const addressFields = ['street', 'city', 'state', 'zipCode'];
+        const missingAddressFields = addressFields.filter(field => !req.body.deliveryAddress[field]);
+        if (missingAddressFields.length > 0) {
+            return res.status(400).json({
+                message: 'Missing required address fields',
+                missingAddressFields
+            });
+        }
+
+        // Validate payment method
+        const validPaymentMethods = ['cash', 'card', 'online'];
+        if (!validPaymentMethods.includes(req.body.paymentMethod)) {
+            return res.status(400).json({
+                message: 'Invalid payment method',
+                validPaymentMethods
+            });
+        }
+
         const delivery = new Delivery({
             ...req.body,
-            user: req.user._id
+            user: req.user._id,
+            status: 'pending',
+            isPaid: false
         });
 
         await delivery.save();
 
         // Send confirmation email
-        await sendDeliveryConfirmationEmail(delivery);
+        try {
+            await sendDeliveryConfirmationEmail(delivery);
+        } catch (emailError) {
+            console.error('Error sending confirmation email:', emailError);
+            // Don't fail the delivery creation if email fails
+        }
 
         res.status(201).json(delivery);
     } catch (error) {
-        res.status(400).json({ message: 'Error creating delivery', error: error.message });
+        console.error('Delivery creation error:', error);
+        res.status(400).json({
+            message: 'Error creating delivery',
+            error: error.message
+        });
     }
 };
 
